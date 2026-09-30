@@ -7,11 +7,20 @@ BakuNotes accepts files **already exported by the source note application**. It 
 | Category | Input | Status |
 | --- | --- | --- |
 | Structured note archive | ENEX (`.enex`) | Implemented and covered by a synthetic conversion test |
-| Markdown or HTML folder | Exported files and assets | Planned; no converter yet |
-| Plain text or tabular export | TXT, CSV, JSON variants | Planned; each source needs a documented field mapping |
+| Individual text notes | UTF-8 TXT, MD, MARKDOWN files | Direct app import implemented; one file per note |
+| Markdown or HTML folder | Exported files and assets | Folder/asset conversion planned; individual Markdown files can be imported |
+| Tabular or structured text export | CSV, JSON variants | Planned; each source needs a documented field mapping |
 | PDF or scanned pages | PDF and images | Deferred; text extraction and OCR are outside the current text-first roadmap |
 
 “Planned” does not mean arbitrary files of that extension can already be imported. Add a converter only after a representative source export and its metadata rules are understood.
+
+## Direct text import
+
+Select one or more UTF-8 `.txt`, `.md`, or `.markdown` files in **Import records**, separately from JSONL and manifests. Each nonempty file becomes one selectable entry, initially unselected. Empty content, null characters or the replacement character U+FFFD stop the whole preview with the filename in the error; check the encoding and resave as UTF-8. No records are saved at that stage.
+
+The filename without its extension becomes the title. The body keeps its content, including Markdown headings and front matter as literal text; only an initial UTF-8 BOM is removed and line endings are normalized to LF. No date, tag, attachment or front-matter field is inferred. Dates remain unknown. Images and linked files are not loaded.
+
+IDs are stable hashes of format, exact filename and normalized body. Repeated import detects identical input, including after editing the imported journal entry; changing the source filename or body creates a separate record rather than updating the earlier one. Source metadata stores the filename and body checksum, and survives JSONL backup and restore. Keep original files separately; direct import does not create a source-file copy.
 
 ## ENEX workflow
 

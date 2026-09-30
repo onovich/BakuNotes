@@ -6,7 +6,7 @@ BakuNotes (梦貘手记) is a local-first dream journal for writing down dreams,
 
 ![BakuNotes illustrated journal and search interface](docs/social-preview.png)
 
-> **Current status:** Local writing, search, JSONL import/export with import preview, and ENEX conversion are implemented. Other note formats are planned. Encrypted Supabase sync is present in code but has not been verified across real devices. There is no hosted web release or signed iPhone build yet.
+> **Current status:** Local writing, search, JSONL import/export with import preview, direct TXT/Markdown import, and ENEX conversion are implemented. Other note formats are planned. Encrypted Supabase sync is present in code but has not been verified across real devices. There is no hosted web release or signed iPhone build yet.
 
 ## Try it locally
 
@@ -19,6 +19,10 @@ npm run web
 ```
 
 Create a dream, add a title or date when you want, and search the library by title or body. Entries save to the current device; the editor confirms completed saves and offers **Retry save** if storage fails. Use **Export backup** to download a JSONL copy. **Import records** previews entries before saving, lets you select them, and marks duplicate IDs.
+
+## Import text files
+
+In **Import records**, select one or more UTF-8 `.txt`, `.md`, or `.markdown` files. Each file becomes one entry: the filename supplies the title, the body stays as text or Markdown source, and dates remain unknown. Select the entries to import in the preview. Reimporting the same filename and body is marked as a duplicate; changing either creates a new record. Markdown front matter, images, and linked attachments are kept as text without special parsing or file import. Choose text files separately from JSONL backups and manifests.
 
 ## Convert notes from ENEX
 

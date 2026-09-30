@@ -74,3 +74,44 @@ test('allows a conversion with only failures when its report matches the empty J
   assert.equal(preview.dreams.length, 0);
   assert.equal(preview.report.errors.length, 1);
 });
+
+test('imports multiple text files with literal Markdown and unknown dates', () => {
+  const preview = parseImportFiles([
+    { name: '海边.TXT', content: '\uFEFF普通文字。\r\n第二行。\r\n' },
+    { name: '灯塔.md', content: '# 灯塔\n\n- 海浪\n**醒来**\n' },
+  ]);
+  assert.equal(preview.format, 'text');
+  assert.equal(preview.dreams.length, 2);
+  assert.equal(preview.dreams[0].title, '海边');
+  assert.equal(preview.dreams[0].body, '普通文字。\n第二行。\n');
+  assert.equal(preview.dreams[1].body, '# 灯塔\n\n- 海浪\n**醒来**\n');
+  for (const dream of preview.dreams) {
+    assert.equal(dream.dreamDate, '');
+    assert.equal(dream.createdAt, '');
+    assert.equal(dream.recordedAt, null);
+  }
+  const backup = serializeDreamArchive(preview.dreams);
+  const restored = parseImportFiles([{ name: 'backup.jsonl', content: backup }]);
+  assert.equal(serializeDreamArchive(restored.dreams), backup);
+  assert.equal(restored.dreams[1].sourceDetails.filename, '灯塔.md');
+});
+
+test('text IDs are repeatable across BOM and newline conventions, and changes create a new ID', () => {
+  const original = parseImportFiles([{ name: '梦.markdown', content: '\uFEFF一行\r\n两行' }]).dreams[0];
+  const repeated = parseImportFiles([{ name: '梦.markdown', content: '一行\n两行' }]).dreams[0];
+  assert.equal(original.id, repeated.id);
+  assert.equal(buildImportCandidates([repeated], [original.id])[0].duplicate, 'existing');
+  const changed = parseImportFiles([{ name: '梦.markdown', content: '一行\n修改' }]).dreams[0];
+  const renamed = parseImportFiles([{ name: '改名.markdown', content: '一行\n两行' }]).dreams[0];
+  assert.notEqual(changed.id, original.id);
+  assert.notEqual(renamed.id, original.id);
+});
+
+test('rejects empty or non-text notes and mixed archive selections before import', () => {
+  assert.throws(() => parseImportFiles([{ name: '空白.txt', content: ' \n' }]), /空白.txt：文件没有正文/);
+  assert.throws(() => parseImportFiles([{ name: 'utf16.txt', content: 'a\0b' }]), /UTF-8/);
+  assert.throws(() => parseImportFiles([{ name: 'gbk.txt', content: '乱码\uFFFD' }]), /检查编码/);
+  assert.throws(() => parseImportFiles([
+    { name: '梦.txt', content: '梦' }, { name: 'backup.jsonl', content: jsonl },
+  ]), /不要与 JSONL/);
+});

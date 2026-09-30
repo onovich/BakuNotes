@@ -19,7 +19,7 @@ export function ImportPreviewDialog({ preview, existingIds, busy, error, onClose
     [preview, existingIds],
   );
   const [selected, setSelected] = useState<Set<number>>(
-    () => new Set(preview.report ? [] : candidates.filter((item) => !item.duplicate).map((item) => item.index)),
+    () => new Set(preview.report || preview.format === 'text' ? [] : candidates.filter((item) => !item.duplicate).map((item) => item.index)),
   );
   const duplicateCount = candidates.filter((item) => item.duplicate).length;
   const selectedCount = candidates.filter((item) => !item.duplicate && selected.has(item.index)).length;
@@ -60,7 +60,10 @@ export function ImportPreviewDialog({ preview, existingIds, busy, error, onClose
               成功 {preview.report.convertedCount} 篇，转换失败 {preview.report.errors.length} 篇。
               转换记录默认不选，请勾选要收入梦库的笔记。
             </Text>
-          : <Text style={styles.notice}>
+          : preview.format === 'text' ? <Text style={styles.notice}>
+              一份文件对应一篇记录，标题取文件名，正文保留原文字及 Markdown。
+              日期留空，可导入后补充；请勾选要收入梦库的笔记。
+            </Text> : <Text style={styles.notice}>
               未选择 manifest.json，无法显示转换错误。如果这是转换结果，请同时选择 JSONL 和 manifest.json。
             </Text>}
         <Text style={styles.notice}>
