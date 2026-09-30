@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">BakuNotes social preview</title>
+  <desc id="desc">BakuNotes title beside an illustrated dream library and writing page</desc>
+  <defs>
+    <clipPath id="appClip"><rect x="618" y="73" width="574" height="480" rx="20"/></clipPath>
+  </defs>
+
+  <rect width="1280" height="640" fill="#E8EFF0"/>
+  <rect width="1280" height="7" fill="#C98769"/>
+
+  <circle cx="121" cy="130" r="27" fill="none" stroke="#2E6D73" stroke-width="2"/>
+  <circle cx="121" cy="130" r="16" fill="#2E6D73"/>
+  <path d="M121 114 A16 16 0 0 1 121 146 Z" fill="#E8EFF0"/>
+
+  <text x="88" y="250" fill="#203640" font-family="Segoe UI, Arial, sans-serif" font-size="78" font-weight="700" letter-spacing="-2">BakuNotes</text>
+  <text x="92" y="297" fill="#2E6D73" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="27" font-weight="600" letter-spacing="5">梦貘手记</text>
+  <text x="91" y="391" fill="#203640" font-family="Segoe UI, Arial, sans-serif" font-size="36" font-weight="400">Write down a dream.</text>
+  <text x="91" y="439" fill="#203640" font-family="Segoe UI, Arial, sans-serif" font-size="36" font-weight="400">Find it again.</text>
+  <rect x="92" y="488" width="136" height="5" rx="2.5" fill="#C98769"/>
+
+  <rect x="628" y="85" width="574" height="480" rx="20" fill="#BCD0D1" opacity="0.50"/>
+  <rect x="618" y="73" width="574" height="480" rx="20" fill="#F9FBFA" stroke="#CDDADB" stroke-width="2"/>
+  <g clip-path="url(#appClip)">
+    <rect x="618" y="73" width="574" height="6" fill="#C98769"/>
+    <rect x="619" y="79" width="204" height="474" fill="#F0F5F4"/>
+    <path d="M823 80 V553" stroke="#CDDADB" stroke-width="2"/>
+
+    <circle cx="657" cy="122" r="17" fill="none" stroke="#2E6D73" stroke-width="1.5"/>
+    <circle cx="657" cy="122" r="10" fill="#2E6D73"/>
+    <path d="M657 112 A10 10 0 0 1 657 132 Z" fill="#F0F5F4"/>
+    <rect x="686" y="116" width="94" height="12" rx="6" fill="#203640"/>
+
+    <rect x="640" y="164" width="160" height="39" rx="8" fill="#FFFFFF" stroke="#CDDADB" stroke-width="1.5"/>
+    <circle cx="657" cy="183" r="6" fill="none" stroke="#60757C" stroke-width="1.7"/>
+    <path d="M662 188 L668 194" stroke="#60757C" stroke-width="1.7" stroke-linecap="round"/>
+    <rect x="680" y="179" width="77" height="7" rx="3.5" fill="#BAC8CA"/>
+
+    <rect x="632" y="224" width="182" height="85" rx="10" fill="#D4E8E5"/>
+    <rect x="648" y="240" width="57" height="6" rx="3" fill="#2E6D73" opacity="0.55"/>
+    <rect x="648" y="256" width="126" height="11" rx="5.5" fill="#203640"/>
+    <rect x="648" y="278" width="99" height="7" rx="3.5" fill="#60757C" opacity="0.55"/>
+
+    <rect x="648" y="332" width="70" height="6" rx="3" fill="#2E6D73" opacity="0.45"/>
+    <rect x="648" y="348" width="112" height="10" rx="5" fill="#203640" opacity="0.75"/>
+    <rect x="648" y="368" width="139" height="7" rx="3.5" fill="#60757C" opacity="0.42"/>
+    <path d="M640 399 H799" stroke="#CDDADB" stroke-width="1"/>
+    <rect x="648" y="421" width="54" height="6" rx="3" fill="#2E6D73" opacity="0.45"/>
+    <rect x="648" y="437" width="130" height="10" rx="5" fill="#203640" opacity="0.75"/>
+    <rect x="648" y="457" width="104" height="7" rx="3.5" fill="#60757C" opacity="0.42"/>
+
+    <rect x="854" y="115" width="79" height="7" rx="3.5" fill="#60757C" opacity="0.65"/>
+    <rect x="1045" y="111" width="100" height="29" rx="7" fill="#E6F0EF"/>
+    <rect x="1060" y="122" width="70" height="6" rx="3" fill="#2E6D73"/>
+    <rect x="854" y="183" width="268" height="22" rx="6" fill="#203640" opacity="0.84"/>
+    <path d="M854 233 H1151" stroke="#CDDADB" stroke-width="1.5"/>
+    <rect x="854" y="275" width="273" height="10" rx="5" fill="#60757C" opacity="0.42"/>
+    <rect x="854" y="302" width="242" height="10" rx="5" fill="#60757C" opacity="0.42"/>
+    <rect x="854" y="329" width="281" height="10" rx="5" fill="#60757C" opacity="0.42"/>
+    <rect x="854" y="356" width="219" height="10" rx="5" fill="#60757C" opacity="0.42"/>
+    <rect x="854" y="383" width="262" height="10" rx="5" fill="#60757C" opacity="0.42"/>
+    <rect x="854" y="410" width="131" height="10" rx="5" fill="#60757C" opacity="0.42"/>
+    <circle cx="870" cy="493" r="8" fill="#C98769"/>
+    <rect x="890" y="489" width="114" height="7" rx="3.5" fill="#60757C" opacity="0.42"/>
+  </g>
+</svg>
