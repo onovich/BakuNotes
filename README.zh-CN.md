@@ -6,7 +6,7 @@ BakuNotes（梦貘手记）是一款本地优先的梦境日记，用于记下�
 
 ![BakuNotes 日记与搜索界面的示意封面](docs/social-preview.png)
 
-> **当前状态：**本地记录、搜索、JSONL 导入导出及 ENEX 转换已经实现；其他笔记格式仍在规划中。Supabase 加密同步已有代码，但尚未在真实设备之间验收；目前也没有已部署网页或签名的 iPhone 安装包。
+> **当前状态：**本地记录、搜索、带预览的 JSONL 导入导出及 ENEX 转换已经实现；其他笔记格式仍在规划中。Supabase 加密同步已有代码，但尚未在真实设备之间验收；目前也没有已部署网页或签名的 iPhone 安装包。
 
 ## 本机试用
 
@@ -18,7 +18,7 @@ npm ci
 npm run web
 ```
 
-新建梦境后，可以随时补充标题或日期，并按标题或正文搜索。记录保存在当前设备。使用“导出备份”下载 JSONL 副本，再用“导入记录”恢复备份或导入转换后的笔记；相同 ID 的记录不会重复导入。
+新建梦境后，可以随时补充标题或日期，并按标题或正文搜索。记录保存在当前设备。使用“导出备份”下载 JSONL 副本；“导入记录”会先预览，让你选择记录，并标出相同 ID 的重复项。
 
 ## 从 ENEX 转换笔记
 
@@ -29,7 +29,9 @@ python tools/convert_enex.py --input "path/to/notes.enex" --output "private/enex
 python tools/verify_conversion.py --archive "private/enex-conversion"
 ```
 
-输出目录必须为空。导入应用前请复核 `dreams.jsonl`：传入的 ENEX 中每篇笔记都会转换，不会自动判断是否为梦境。转换器保存附件文件和元数据；应用目前只导入文字记录与元数据，不会把附件文件带入日记。格式约定及后续格式类别见[转换说明](CONVERSION.md)。[印象笔记帮助中心](https://help.yinxiang.com/hc/articles/63067)说明了其客户端的 ENEX 导出能力。
+输出目录必须为空。在“导入记录”中同时选择 `dreams.jsonl` 和 `manifest.json`：应用会核对报告与记录，显示转换失败项及重复项。转换记录默认不勾选，由你决定哪些笔记进入梦库。单独选择 JSONL 备份仍可导入，但无法显示转换错误。
+
+传入的 ENEX 中每篇笔记都会转换，不会自动判断是否为梦境。转换器保存附件文件和元数据；应用目前只导入文字记录与元数据，不会把附件文件带入日记。格式约定及后续格式类别见[转换说明](CONVERSION.md)。[印象笔记帮助中心](https://help.yinxiang.com/hc/articles/63067)说明了其客户端的 ENEX 导出能力。
 
 ## 隐私与备份
 
@@ -45,13 +47,14 @@ python tools/verify_conversion.py --archive "private/enex-conversion"
 
 ## 检查命令
 
-从仓库根目录执行：
+从仓库根目录执行（导入契约测试需要 Node.js 24 或更新版本）：
 
 ```sh
 cd app
 npm run lint
 npx tsc --noEmit
 npx expo export --platform web
+node --experimental-strip-types --test tests/import.test.mjs
 cd ..
 python -m unittest discover -s tools -p 'test_*.py'
 ```

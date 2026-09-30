@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { displayTitle, Dream, makeDream, searchDreams } from './src/dreams';
 import { loadDreams, saveDreams } from './src/storage';
-import { parseDreamArchive, serializeDreamArchive } from './src/import';
+import { parseImportFiles, serializeDreamArchive, type ImportPreview } from './src/import';
+import { ImportPreviewDialog } from './src/ImportPreview';
 import { CloudPanel } from './src/CloudPanel';
 import { useCloudSync } from './src/useCloudSync';
 
@@ -118,6 +119,8 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [status, setStatus] = useState('开始写，内容会自动保存');
   const [importStatus, setImportStatus] = useState('');
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const saveSequence = useRef(Promise.resolve());
   const sync = useCloudSync(dreams, setDreams, loaded && !loadError);
@@ -158,26 +161,42 @@ export default function App() {
   };
   const onImport = async () => {
     try {
-      const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      const picked = await DocumentPicker.getDocumentAsync({ type: '*/*', multiple: true, copyToCacheDirectory: true });
       if (picked.canceled) return;
-      const asset = picked.assets[0];
-      const content = Platform.OS === 'web' && asset.file
-        ? await asset.file.text()
-        : await new File(asset.uri).text();
-      const imported = parseDreamArchive(content);
+      const files = await Promise.all(picked.assets.map(async (asset) => ({
+        name: asset.name,
+        content: Platform.OS === 'web' && asset.file
+          ? await asset.file.text()
+          : await new File(asset.uri).text(),
+      })));
+      setImportPreview(parseImportFiles(files));
+      setImportStatus('');
+    } catch (error) {
+      setImportStatus(error instanceof Error ? `导入预览失败：${error.message}` : '导入预览失败：文件无法读取');
+    }
+  };
+  const onConfirmImport = async (indices: number[]) => {
+    if (!importPreview || importBusy) return;
+    setImportBusy(true);
+    try {
       const existing = new Set(dreams.map((dream) => dream.id));
-      const additions = imported.filter((dream) => {
+      const additions = indices.map((index) => importPreview.dreams[index]).filter((dream) => {
+        if (!dream) return false;
         if (existing.has(dream.id)) return false;
         existing.add(dream.id);
         return true;
       });
+      if (!additions.length) throw new Error('所选记录已在梦库中，请重新检查');
       const merged = [...additions, ...dreams];
       saveSequence.current = saveSequence.current.catch(() => {}).then(() => saveDreams(merged));
       await saveSequence.current;
       setDreams(merged);
-      setImportStatus(`已导入 ${additions.length} 篇，跳过重复 ${imported.length - additions.length} 篇`);
+      setImportPreview(null);
+      setImportStatus(`已导入所选的 ${additions.length} 篇记录`);
     } catch (error) {
       setImportStatus(error instanceof Error ? `导入失败：${error.message}` : '导入失败：文件无法读取');
+    } finally {
+      setImportBusy(false);
     }
   };
   const onExport = async () => {
@@ -249,6 +268,8 @@ export default function App() {
         </ScrollView>
       </View>
     </Modal>
+    {importPreview && <ImportPreviewDialog preview={importPreview} existingIds={dreams.map((dream) => dream.id)}
+      busy={importBusy} error={importStatus} onClose={() => setImportPreview(null)} onConfirm={onConfirmImport} />}
   </SafeAreaView></SafeAreaProvider>;
 }
 

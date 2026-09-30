@@ -50,6 +50,30 @@ class ConvertEnexTest(unittest.TestCase):
             (destination / records[1]["attachments"][0]["path"]).write_bytes(b"changed")
             self.assertFalse(verify_conversion(destination)["integrity_ok"])
 
+    def test_reports_failed_notes_and_reuses_stable_ids(self):
+        broken = '''<note><title>Broken resource</title><content><![CDATA[<en-note>text</en-note>]]></content>
+        <resource><data>x</data></resource></note>'''
+        source_text = SAMPLE.replace("</en-export>", broken + "</en-export>")
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "export.enex"
+            source.write_text(source_text, encoding="utf-8")
+            original = source.read_bytes()
+            first = Path(temp) / "first"
+            second = Path(temp) / "second"
+            first_manifest = convert_enex(source, first)
+            second_manifest = convert_enex(source, second)
+            first_records = [json.loads(line) for line in (first / "dreams.jsonl").read_text(encoding="utf-8").splitlines()]
+            second_records = [json.loads(line) for line in (second / "dreams.jsonl").read_text(encoding="utf-8").splitlines()]
+
+            self.assertEqual(source.read_bytes(), original)
+            self.assertEqual(first_manifest["source_note_count"], 3)
+            self.assertEqual(first_manifest["converted_count"], 2)
+            self.assertEqual(first_manifest["error_count"], 1)
+            self.assertEqual(first_manifest["errors"][0]["note_index"], 3)
+            self.assertEqual([item["id"] for item in first_records], [item["id"] for item in second_records])
+            self.assertEqual(first_manifest["archive_sha256"], second_manifest["archive_sha256"])
+            self.assertTrue(verify_conversion(first)["integrity_ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

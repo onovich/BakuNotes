@@ -22,7 +22,7 @@ python tools/convert_enex.py --input "path/to/notes.enex" --output "private/enex
 python tools/verify_conversion.py --archive "private/enex-conversion"
 ```
 
-The converter does not modify the input. It writes `raw/` (a source copy), `dreams.jsonl` (one converted note per line), `attachments/` (extracted files), and `manifest.json` (counts, checksums, errors). The output is plaintext and must stay outside Git. Inspect the manifest and records before using **Import records** in the app. Every note in the selected ENEX is converted; the tool does not decide whether it is a dream.
+The converter does not modify the input. It writes `raw/` (a source copy), `dreams.jsonl` (one converted note per line), `attachments/` (extracted files), and `manifest.json` (counts, checksums, errors). The output is plaintext and must stay outside Git. Select `dreams.jsonl` and `manifest.json` together in **Import records**. The app checks their matching record count and checksum, lists conversion failures and duplicate IDs, and starts with no converted notes selected. A standalone JSONL backup can also be previewed and restored; without a manifest, conversion failures cannot be shown. Every note in the selected ENEX is converted; the tool does not decide whether it is a dream.
 
 ## Common record contract
 
