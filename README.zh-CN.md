@@ -18,7 +18,7 @@ npm ci
 npm run web
 ```
 
-新建梦境后，可以随时补充标题或日期，并按标题或正文搜索。记录保存在当前设备。使用“导出备份”下载 JSONL 副本；“导入记录”会先预览，让你选择记录，并标出相同 ID 的重复项。
+新建梦境后，可以随时补充标题或日期，并按标题或正文搜索。编辑器会在本地写入完成后提示“已保存在此设备”；写入失败时可点“重试保存”。使用“导出备份”下载 JSONL 副本；“导入记录”会先预览，让你选择记录，并标出相同 ID 的重复项。
 
 ## 从 ENEX 转换笔记
 
@@ -54,7 +54,7 @@ cd app
 npm run lint
 npx tsc --noEmit
 npx expo export --platform web
-node --experimental-strip-types --test tests/import.test.mjs
+node --experimental-strip-types --test tests/*.test.mjs
 cd ..
 python -m unittest discover -s tools -p 'test_*.py'
 ```

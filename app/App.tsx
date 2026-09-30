@@ -5,15 +5,16 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet,
   Text, TextInput, useWindowDimensions, View,
 } from 'react-native';
-import { displayTitle, Dream, makeDream, searchDreams } from './src/dreams';
+import { displayTitle, Dream, makeDream, searchDreams, todayLocal } from './src/dreams';
 import { loadDreams, saveDreams } from './src/storage';
 import { parseImportFiles, serializeDreamArchive, type ImportPreview } from './src/import';
 import { ImportPreviewDialog } from './src/ImportPreview';
 import { CloudPanel } from './src/CloudPanel';
 import { useCloudSync } from './src/useCloudSync';
+import { SaveQueue, type SaveState } from './src/saveQueue';
 
 const c = {
   canvas: '#E8EFF0', paper: '#F9FBFA', ink: '#203640', muted: '#60757C',
@@ -27,10 +28,11 @@ function Brand() {
   </View>;
 }
 
-function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImport, onExport, onCloud, importStatus, syncStatus }: {
+function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImport, onExport, onCloud, importStatus, syncStatus, saveFailed, onRetrySave }: {
   dreams: Dream[]; selectedId: string | null; query: string;
   setQuery: (query: string) => void; onSelect: (dream: Dream) => void; onNew: () => void;
   onImport: () => void; onExport: () => void; onCloud: () => void; importStatus: string; syncStatus: string;
+  saveFailed: boolean; onRetrySave: () => void;
 }) {
   const results = useMemo(() => searchDreams(dreams, query), [dreams, query]);
   return <View style={s.library}>
@@ -56,6 +58,9 @@ function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImpor
       </View>
       <Text style={s.syncStatus}>{syncStatus}</Text>
       {!!importStatus && <Text style={s.importStatus} accessibilityLiveRegion="polite">{importStatus}</Text>}
+      {saveFailed && <Pressable onPress={onRetrySave} accessibilityRole="button" style={s.importButton}>
+        <Text style={s.retrySave}>重试保存</Text>
+      </Pressable>}
     </View>
     <ScrollView style={s.list} contentContainerStyle={s.listContent} keyboardShouldPersistTaps="handled">
       {results.length === 0 ? <View style={s.empty}>
@@ -73,8 +78,8 @@ function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImpor
   </View>;
 }
 
-function Editor({ dream, onChange, status, compact }: {
-  dream: Dream; onChange: (dream: Dream) => void; status: string; compact: boolean;
+function Editor({ dream, onChange, status, onRetry, compact }: {
+  dream: Dream; onChange: (dream: Dream) => void; status: string; onRetry: (() => void) | null; compact: boolean;
 }) {
   const bodyRef = useRef<TextInput>(null);
   return <ScrollView style={s.editorScroll} contentContainerStyle={[s.editorScrollContent, compact && s.editorScrollContentCompact]}
@@ -88,7 +93,12 @@ function Editor({ dream, onChange, status, compact }: {
             placeholder="YYYY-MM-DD" placeholderTextColor={c.muted}
             accessibilityLabel="梦的日期，格式为年月日" />
         </View>
-        <Text style={s.saveStatus} accessibilityLiveRegion="polite">{status}</Text>
+        <View style={s.saveGroup}>
+          <Text style={s.saveStatus} accessibilityLiveRegion="polite">{status}</Text>
+          {onRetry && <Pressable onPress={onRetry} accessibilityRole="button" accessibilityLabel="重试保存">
+            <Text style={s.retrySave}>重试保存</Text>
+          </Pressable>}
+        </View>
       </View>
       <TextInput style={[s.titleInput, compact && s.titleInputCompact]} value={dream.title}
         onChangeText={(title) => onChange({ ...dream, title })}
@@ -117,36 +127,46 @@ export default function App() {
   const [mobileView, setMobileView] = useState<'write' | 'library'>('write');
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [status, setStatus] = useState('开始写，内容会自动保存');
+  const [saveState, setSaveState] = useState<SaveState>('idle');
   const [importStatus, setImportStatus] = useState('');
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
-  const saveSequence = useRef(Promise.resolve());
+  const saveQueue = useRef<SaveQueue<Dream[]> | null>(null);
+  if (!saveQueue.current) saveQueue.current = new SaveQueue(saveDreams, setSaveState);
+  const queue = saveQueue.current;
   const sync = useCloudSync(dreams, setDreams, loaded && !loadError);
 
   useEffect(() => {
     loadDreams().then((items) => {
+      queue.acknowledgeLoaded(items);
       setDreams(items);
       if (items[0]) { setDraft(items[0]); setSelectedId(items[0].id); setMobileView('library'); }
     }).catch(() => setLoadError('本地数据读取失败。请保留当前设备数据，暂时不要继续编辑。')).finally(() => setLoaded(true));
-  }, []);
+  }, [queue]);
 
   useEffect(() => {
     if (!loaded || loadError) return;
-    setStatus('正在保存…');
-    const timer = setTimeout(() => {
-      saveSequence.current = saveSequence.current.then(() => saveDreams(dreams))
-        .then(() => setStatus('已保存在此设备'))
-        .catch(() => setStatus('保存失败，请勿关闭页面'));
-    }, 450);
-    return () => clearTimeout(timer);
-  }, [dreams, loaded, loadError]);
+    queue.schedule(dreams);
+  }, [dreams, loaded, loadError, queue]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') void queue.flush().catch(() => {});
+    });
+    return () => subscription.remove();
+  }, [queue]);
+
+  useEffect(() => {
+    if (saveState === 'saved') {
+      setImportStatus((current) => current.startsWith('导入记录尚未保存') ? '记录已保存在此设备' : current);
+    }
+  }, [saveState]);
 
   const onChange = (next: Dream) => {
     const updated = { ...next, updatedAt: new Date().toISOString() };
     setDraft(updated);
-    if (!updated.title.trim() && !updated.body.trim()) return;
+    if (selectedId !== updated.id && !updated.title.trim() && !updated.body.trim()) return;
     setDreams((current) => current.some((item) => item.id === updated.id)
       ? current.map((item) => item.id === updated.id ? updated : item)
       : [updated, ...current]);
@@ -154,7 +174,6 @@ export default function App() {
   };
   const onNew = () => {
     setDraft(makeDream()); setSelectedId(null); setMobileView('write');
-    setStatus('开始写，内容会自动保存');
   };
   const onSelect = (dream: Dream) => {
     setDraft(dream); setSelectedId(dream.id); setMobileView('write');
@@ -178,6 +197,7 @@ export default function App() {
   const onConfirmImport = async (indices: number[]) => {
     if (!importPreview || importBusy) return;
     setImportBusy(true);
+    let applied = false;
     try {
       const existing = new Set(dreams.map((dream) => dream.id));
       const additions = indices.map((index) => importPreview.dreams[index]).filter((dream) => {
@@ -188,21 +208,28 @@ export default function App() {
       });
       if (!additions.length) throw new Error('所选记录已在梦库中，请重新检查');
       const merged = [...additions, ...dreams];
-      saveSequence.current = saveSequence.current.catch(() => {}).then(() => saveDreams(merged));
-      await saveSequence.current;
+      queue.schedule(merged);
       setDreams(merged);
       setImportPreview(null);
+      applied = true;
+      await queue.flush();
       setImportStatus(`已导入所选的 ${additions.length} 篇记录`);
     } catch (error) {
-      setImportStatus(error instanceof Error ? `导入失败：${error.message}` : '导入失败：文件无法读取');
+      setImportStatus(applied
+        ? '导入记录尚未保存在此设备，请点“重试保存”；关闭页面前请先导出备份'
+        : error instanceof Error ? `导入失败：${error.message}` : '导入失败：文件无法读取');
     } finally {
       setImportBusy(false);
     }
   };
+  const onRetrySave = () => { void queue.flush().catch(() => {}); };
+  const saveStatus = saveState === 'failed' ? '保存失败，请勿关闭页面'
+    : saveState === 'saving' ? '正在保存…'
+      : selectedId ? '已保存在此设备' : '开始写，内容会自动保存';
   const onExport = async () => {
     try {
       if (!dreams.length) { setImportStatus('还没有可导出的记录'); return; }
-      const filename = `梦貘手记备份-${new Date().toISOString().slice(0, 10)}.jsonl`;
+      const filename = `梦貘手记备份-${todayLocal()}.jsonl`;
       const content = serializeDreamArchive(dreams);
       if (Platform.OS === 'web') {
         const url = URL.createObjectURL(new Blob([content], { type: 'application/x-ndjson;charset=utf-8' }));
@@ -238,11 +265,13 @@ export default function App() {
       {(wide || mobileView === 'library') && <Library dreams={dreams} selectedId={selectedId}
         query={query} setQuery={setQuery} onSelect={onSelect} onNew={onNew}
         onImport={onImport} onExport={onExport} onCloud={() => setShowCloud(true)}
-        importStatus={importStatus} syncStatus={sync.status} />}
+        importStatus={importStatus} syncStatus={sync.status}
+        saveFailed={saveState === 'failed'} onRetrySave={onRetrySave} />}
       {(wide || mobileView === 'write') && <View style={s.writePanel}>
         {!wide && <View style={s.mobileHeader}><Brand />
           <Text style={s.localOnly}>{sync.status}</Text></View>}
-        <Editor dream={draft} onChange={onChange} status={status} compact={compact} />
+        <Editor dream={draft} onChange={onChange} status={saveStatus}
+          onRetry={saveState === 'failed' ? onRetrySave : null} compact={compact} />
       </View>}
     </View>
     {!wide ? <View style={s.bottomNav}>
@@ -318,6 +347,8 @@ const s = StyleSheet.create({
   fieldLabel: { color: c.muted, fontSize: 12 },
   dateInput: { color: c.accent, fontSize: 13, borderBottomWidth: 1, borderBottomColor: c.line, paddingBottom: 3, minWidth: 96 },
   saveStatus: { color: c.muted, fontSize: 11, paddingTop: 2, textAlign: 'right' },
+  saveGroup: { alignItems: 'flex-end', gap: 4 },
+  retrySave: { color: c.accent, fontSize: 12, fontWeight: '700' },
   titleInput: { color: c.ink, fontSize: 25, fontWeight: '700', marginTop: 35, paddingVertical: 7, minHeight: 52 },
   titleInputCompact: { fontSize: 21, marginTop: 22 },
   rule: { height: 1, backgroundColor: c.line, marginTop: 13, marginBottom: 24 },

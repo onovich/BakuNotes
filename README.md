@@ -18,7 +18,7 @@ npm ci
 npm run web
 ```
 
-Create a dream, add a title or date when you want, and search the library by title or body. Entries save to the current device. Use **Export backup** to download a JSONL copy. **Import records** previews entries before saving, lets you select them, and marks duplicate IDs.
+Create a dream, add a title or date when you want, and search the library by title or body. Entries save to the current device; the editor confirms completed saves and offers **Retry save** if storage fails. Use **Export backup** to download a JSONL copy. **Import records** previews entries before saving, lets you select them, and marks duplicate IDs.
 
 ## Convert notes from ENEX
 
@@ -54,7 +54,7 @@ cd app
 npm run lint
 npx tsc --noEmit
 npx expo export --platform web
-node --experimental-strip-types --test tests/import.test.mjs
+node --experimental-strip-types --test tests/*.test.mjs
 cd ..
 python -m unittest discover -s tools -p 'test_*.py'
 ```

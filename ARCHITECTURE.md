@@ -23,7 +23,7 @@ BakuNotes 不负责登录来源笔记应用或执行其导出。转换器只接�
 | 日记界面 | `app/App.tsx`、`app/src/ImportPreview.tsx` | 新建、编辑、搜索、导入前预览选择、导出备份；主界面仍集中处理较多状态与文件操作 |
 | 梦境规则 | `app/src/dreams.ts` | 记录结构与本地搜索；梦的日期与来源时间分开 |
 | JSONL 接口 | `app/src/import.ts` | 把转换结果或备份读入日记；配对校验转换报告、识别重复 ID，保留来源与附件元数据，附件文件尚未进入应用 |
-| 本地存取 | `app/src/storage.ts` | AsyncStorage 保存整份记录数组；需加强写入失败及大批量数据验证 |
+| 本地存取 | `app/src/storage.ts`、`saveQueue.ts` | AsyncStorage 保存整份记录数组；保存队列串行写入，仅在最新版本完成后显示成功，失败可重试；大批量数据仍需验证 |
 | 加密同步 | `app/src/crypto.ts`、`cloud.ts`、`sync.ts`、`useCloudSync.ts`、`supabase/schema.sql` | 客户端加密、密文存储与冲突副本；真实跨设备验收尚未完成 |
 | 格式转换 | `tools/convert_enex.py`、`verify_conversion.py` | 读取已有 ENEX，生成 JSONL、附件文件和校验清单；不调用来源应用的导出功能 |
 
