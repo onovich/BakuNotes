@@ -5,7 +5,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator, AppState, Modal, Platform, Pressable, ScrollView, StyleSheet,
+  ActivityIndicator, AppState, FlatList, Modal, Platform, Pressable, ScrollView, StyleSheet,
   Text, TextInput, useWindowDimensions, View,
 } from 'react-native';
 import { displayTitle, Dream, makeDream, searchDreams, todayLocal } from './src/dreams';
@@ -62,19 +62,22 @@ function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImpor
         <Text style={s.retrySave}>重试保存</Text>
       </Pressable>}
     </View>
-    <ScrollView style={s.list} contentContainerStyle={s.listContent} keyboardShouldPersistTaps="handled">
-      {results.length === 0 ? <View style={s.empty}>
+    <FlatList data={results} keyExtractor={(dream) => dream.id} extraData={selectedId}
+      style={s.list} contentContainerStyle={s.listContent} keyboardShouldPersistTaps="handled"
+      initialNumToRender={12} windowSize={5}
+      ListEmptyComponent={<View style={s.empty}>
         <Text style={s.emptyMark}>✦</Text>
         <Text style={s.emptyTitle}>{query ? '没有找到这个梦' : '还没有记录'}</Text>
         <Text style={s.emptyText}>{query ? '换一个词，或清空搜索再试。' : '醒来时记下片段，也值得保存。'}</Text>
-      </View> : results.map((dream) => <Pressable key={dream.id} onPress={() => onSelect(dream)}
+      </View>}
+      renderItem={({ item: dream }) => <Pressable onPress={() => onSelect(dream)}
         accessibilityRole="button" accessibilityLabel={`打开梦境：${displayTitle(dream)}`}
         style={[s.item, selectedId === dream.id && s.itemSelected]}>
         <Text style={s.itemDate} numberOfLines={1}>{dream.dreamDate || '日期待定'}</Text>
         <Text style={s.itemTitle} numberOfLines={1}>{displayTitle(dream)}</Text>
         <Text style={s.itemExcerpt} numberOfLines={2}>{dream.body.trim() || '还没有正文'}</Text>
-      </Pressable>)}
-    </ScrollView>
+      </Pressable>}
+    />
   </View>;
 }
 
