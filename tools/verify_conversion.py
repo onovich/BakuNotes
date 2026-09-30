@@ -17,7 +17,7 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def verify_archive(directory: Path) -> dict:
+def verify_conversion(directory: Path) -> dict:
     problems: list[str] = []
     manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     raw = directory / "raw" / manifest["source_file"]
@@ -69,7 +69,7 @@ def main() -> int:
     parser.add_argument("--archive", type=Path, required=True)
     args = parser.parse_args()
     try:
-        result = verify_archive(args.archive)
+        result = verify_conversion(args.archive)
     except Exception as exc:
         print(f"Verification failed: {exc}", file=sys.stderr)
         return 1

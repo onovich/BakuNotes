@@ -3,8 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from import_enex import import_enex
-from verify_archive import verify_archive
+from convert_enex import convert_enex
+from verify_conversion import verify_conversion
 
 
 SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -25,13 +25,13 @@ SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
 </en-export>'''
 
 
-class ImportEnexTest(unittest.TestCase):
+class ConvertEnexTest(unittest.TestCase):
     def test_preserves_source_and_converts_chinese_text_and_attachment(self):
         with tempfile.TemporaryDirectory() as temp:
             source = Path(temp) / "export.enex"
             destination = Path(temp) / "result"
             source.write_text(SAMPLE, encoding="utf-8")
-            manifest = import_enex(source, destination)
+            manifest = convert_enex(source, destination)
             records = [json.loads(line) for line in (destination / "dreams.jsonl").read_text(encoding="utf-8").splitlines()]
 
             self.assertEqual(manifest["source_note_count"], 2)
@@ -40,12 +40,15 @@ class ImportEnexTest(unittest.TestCase):
             self.assertEqual((destination / "raw" / source.name).read_bytes(), source.read_bytes())
             self.assertEqual(records[0]["body"], "我在海边。\n第二行 & 灯塔。\n醒来时还记得。")
             self.assertIsNone(records[0]["dream_date"])
+            self.assertIsNone(records[0]["recorded_at"])
+            self.assertEqual(records[0]["source"]["system"], "enex")
+            self.assertEqual(records[0]["source_created_at"], "2026-09-29T23:00:00+00:00")
             self.assertEqual(records[0]["tags"], ["海"])
             self.assertIn("[附件:线索.txt]", records[1]["body"])
             self.assertEqual((destination / records[1]["attachments"][0]["path"]).read_bytes(), b"abc")
-            self.assertTrue(verify_archive(destination)["integrity_ok"])
+            self.assertTrue(verify_conversion(destination)["integrity_ok"])
             (destination / records[1]["attachments"][0]["path"]).write_bytes(b"changed")
-            self.assertFalse(verify_archive(destination)["integrity_ok"])
+            self.assertFalse(verify_conversion(destination)["integrity_ok"])
 
 
 if __name__ == "__main__":

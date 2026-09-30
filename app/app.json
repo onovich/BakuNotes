@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "梦笺",
-    "slug": "mengjian",
+    "name": "梦貘手记",
+    "slug": "bakunotes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

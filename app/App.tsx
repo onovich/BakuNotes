@@ -8,7 +8,7 @@ import {
   ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet,
   Text, TextInput, useWindowDimensions, View,
 } from 'react-native';
-import { displaySourceFolder, displayTitle, Dream, makeDream, searchDreams, titleDateHint } from './src/dreams';
+import { displayTitle, Dream, makeDream, searchDreams } from './src/dreams';
 import { loadDreams, saveDreams } from './src/storage';
 import { parseDreamArchive, serializeDreamArchive } from './src/import';
 import { CloudPanel } from './src/CloudPanel';
@@ -22,7 +22,7 @@ const c = {
 function Brand() {
   return <View style={s.brand}>
     <View style={s.glyph}><Text style={s.glyphText}>◐</Text></View>
-    <View><Text style={s.brandName}>梦笺</Text><Text style={s.brandSub}>让梦在醒来后留下来</Text></View>
+    <View><Text style={s.brandName}>梦貘手记</Text><Text style={s.brandSub}>让梦在醒来后留下来</Text></View>
   </View>;
 }
 
@@ -44,7 +44,7 @@ function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImpor
       <Text style={s.count}>{query ? `找到 ${results.length} 篇` : `${dreams.length} 篇梦境`}</Text>
       <View style={s.archiveActions}>
         <Pressable onPress={onImport} accessibilityRole="button" style={s.importButton}>
-          <Text style={s.importButtonText}>导入历史记录</Text>
+          <Text style={s.importButtonText}>导入记录</Text>
         </Pressable>
         <Pressable onPress={onExport} accessibilityRole="button" style={s.importButton}>
           <Text style={s.importButtonText}>导出备份</Text>
@@ -64,9 +64,9 @@ function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImpor
       </View> : results.map((dream) => <Pressable key={dream.id} onPress={() => onSelect(dream)}
         accessibilityRole="button" accessibilityLabel={`打开梦境：${displayTitle(dream)}`}
         style={[s.item, selectedId === dream.id && s.itemSelected]}>
-        <Text style={s.itemDate} numberOfLines={1}>{dream.dreamDate || (titleDateHint(dream.title) ? `${titleDateHint(dream.title)}（标题）` : '日期待定')}{dream.sourcePath ? ` · ${displaySourceFolder(dream.sourcePath)}` : ''}</Text>
+        <Text style={s.itemDate} numberOfLines={1}>{dream.dreamDate || '日期待定'}</Text>
         <Text style={s.itemTitle} numberOfLines={1}>{displayTitle(dream)}</Text>
-        <Text style={s.itemExcerpt} numberOfLines={2}>{dream.body.trim() || (dream.sourcePath ? '原始 PDF 无可提取文字，请查看原件' : '还没有正文')}</Text>
+        <Text style={s.itemExcerpt} numberOfLines={2}>{dream.body.trim() || '还没有正文'}</Text>
       </Pressable>)}
     </ScrollView>
   </View>;
@@ -95,14 +95,12 @@ function Editor({ dream, onChange, status, compact }: {
         accessibilityLabel="梦境标题" returnKeyType="next"
         onSubmitEditing={() => bodyRef.current?.focus()} />
       <View style={s.rule} />
-      {!!dream.sourcePath && !dream.body.trim() && <Text style={s.importNotice}>原始 PDF 没有可提取文字，请在本地归档中查看原件。</Text>}
       <TextInput ref={bodyRef} style={s.bodyInput} value={dream.body}
         onChangeText={(body) => onChange({ ...dream, body })}
         placeholder={'醒来后还记得什么？\n\n从一个画面、一句话或一种感觉开始。'}
         placeholderTextColor="#91A3A6" accessibilityLabel="梦境正文"
         multiline textAlignVertical="top" autoCapitalize="sentences" />
       <Text style={s.foot}>先写下来，细节可以稍后补充。</Text>
-      {!!dream.sourcePath && <Text style={s.sourcePath} numberOfLines={2}>原件：{dream.sourcePath}</Text>}
     </View>
   </ScrollView>;
 }
@@ -185,7 +183,7 @@ export default function App() {
   const onExport = async () => {
     try {
       if (!dreams.length) { setImportStatus('还没有可导出的记录'); return; }
-      const filename = `梦笺备份-${new Date().toISOString().slice(0, 10)}.jsonl`;
+      const filename = `梦貘手记备份-${new Date().toISOString().slice(0, 10)}.jsonl`;
       const content = serializeDreamArchive(dreams);
       if (Platform.OS === 'web') {
         const url = URL.createObjectURL(new Blob([content], { type: 'application/x-ndjson;charset=utf-8' }));
@@ -199,7 +197,7 @@ export default function App() {
         file.create({ overwrite: true });
         file.write(content);
         if (!await Sharing.isAvailableAsync()) throw new Error('当前设备无法打开分享菜单');
-        await Sharing.shareAsync(file.uri, { mimeType: 'application/x-ndjson', dialogTitle: '保存梦笺备份' });
+        await Sharing.shareAsync(file.uri, { mimeType: 'application/x-ndjson', dialogTitle: '保存梦貘手记备份' });
       }
       setImportStatus(`已生成 ${dreams.length} 篇的备份，请妥善保存`);
     } catch (error) {
@@ -208,7 +206,7 @@ export default function App() {
   };
 
   if (!loaded) return <View style={s.loading}>
-    <ActivityIndicator color={c.accent} /><Text style={s.loadingText}>正在打开梦笺…</Text>
+    <ActivityIndicator color={c.accent} /><Text style={s.loadingText}>正在打开梦貘手记…</Text>
   </View>;
   if (loadError) return <View style={s.loading}>
     <Text style={s.emptyTitle}>无法打开梦境</Text><Text style={s.loadingText}>{loadError}</Text>
@@ -281,8 +279,6 @@ const s = StyleSheet.create({
   itemDate: { color: c.accent, fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
   itemTitle: { color: c.ink, fontSize: 17, fontWeight: '700', marginTop: 6 },
   itemExcerpt: { color: c.muted, fontSize: 13, lineHeight: 20, marginTop: 5 },
-  sourcePath: { color: c.muted, fontSize: 11, lineHeight: 16, marginTop: 12 },
-  importNotice: { color: c.dawn, fontSize: 13, lineHeight: 20, marginTop: 12 },
   empty: { alignItems: 'center', paddingTop: 70, paddingHorizontal: 24 },
   emptyMark: { color: c.dawn, fontSize: 30 },
   emptyTitle: { color: c.ink, fontSize: 18, fontWeight: '700', marginTop: 12 },

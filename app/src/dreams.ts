@@ -8,8 +8,13 @@ export type Dream = {
   createdAt: string;
   updatedAt: string;
   tags: string[];
-  source?: 'new' | 'youdao';
+  source?: string;
   sourcePath?: string;
+  sourceDetails?: Record<string, unknown>;
+  sourceCreatedAt?: string;
+  sourceUpdatedAt?: string;
+  recordedAt?: string | null;
+  attachments?: Record<string, unknown>[];
 };
 
 export const todayLocal = () => {
@@ -35,29 +40,12 @@ export const makeDream = (): Dream => {
 export const displayTitle = (dream: Dream) =>
   dream.title.trim() || dream.body.trim().split(/\r?\n/)[0]?.slice(0, 28) || '未命名的梦';
 
-export const displaySourceFolder = (sourcePath: string) => {
-  const parts = sourcePath.split(/[\\/]/).filter(Boolean);
-  return parts.length > 1 ? parts.slice(-3, -1).join('/') : '导出根目录';
-};
-
-export const titleDateHint = (title: string): string => {
-  const match = title.match(/^((?:19|20)\d{2})(?:年|[.\-/])?(0?[1-9]|1[0-2])(?:月|[.\-/])?([0-2]?\d|3[01])日?(?!\d)/);
-  if (!match) return '';
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) return '';
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-};
-
 export const searchDreams = (dreams: Dream[], query: string): Dream[] => {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return dreams
     .filter((dream) => {
-      const haystack = `${dream.title}\n${dream.body}\n${dream.tags.join(' ')}\n${dream.sourcePath || ''}`.toLocaleLowerCase();
+      const haystack = `${dream.title}\n${dream.body}\n${dream.tags.join(' ')}`.toLocaleLowerCase();
       return words.every((word) => haystack.includes(word));
     })
-    .sort((a, b) => (b.dreamDate || b.createdAt || titleDateHint(b.title))
-      .localeCompare(a.dreamDate || a.createdAt || titleDateHint(a.title)));
+    .sort((a, b) => (b.dreamDate || b.createdAt).localeCompare(a.dreamDate || a.createdAt));
 };

@@ -9,7 +9,7 @@
 
 ## 账号就绪后的顺序
 
-1. 先完成 [云同步配置](CLOUD_SETUP.md)，在网页验收加密与数据迁移。不要把未经验证的真实梦境放进安装包测试流程。
+1. 先完成 [云同步配置](CLOUD_SETUP.md)，在网页验收加密与备份恢复。不要把未经验证的真实梦境放进安装包测试流程。
 2. 在 `app/` 执行 `npx eas-cli login` 与 `npx eas-cli build:configure`，确认 Expo 项目归属。
 3. 设置项目唯一的 `ios.bundleIdentifier`；用 `npx eas-cli device:create` 注册要安装的 iPhone。
 4. 执行 `npx eas-cli build --platform ios --profile preview`，按 EAS 提示完成 Apple 签名。构建完成后下载 `.ipa` 并在已注册的 iPhone 上安装、验收。

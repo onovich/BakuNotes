@@ -11,7 +11,7 @@
 
 - Promise: write down a dream and find it again.
 - Proof: a paired searchable library and writing surface, following the app's actual layout and colors.
-- Exclude: private archive statistics, cloud guarantees, signed iOS delivery, invented dreams, badges, and GitHub branding.
+- Exclude: private note content, unsupported format claims, cloud guarantees, signed iOS delivery, invented dreams, badges, and GitHub branding.
 
 ## Source route and composition
 

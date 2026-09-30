@@ -1,7 +1,7 @@
-"""Preserve an ENEX export and convert its notes into a portable JSONL archive.
+"""Convert an existing ENEX file into BakuNotes JSONL and preserve a source copy.
 
-No network calls are made. The input is never modified. Conversion is intentionally
-conservative: the original ENEX remains available for exact recovery.
+The source application performs the export. This tool makes no network calls and
+never modifies the input file.
 """
 
 from __future__ import annotations
@@ -120,16 +120,16 @@ def convert_note(note: ET.Element, source_name: str, index: int, attachment_dir:
         "title": title,
         "body": body,
         "dream_date": None,
-        "recorded_at": created,
+        "recorded_at": None,
         "source_created_at": created,
         "source_updated_at": updated,
         "tags": tags,
-        "source": {"system": "youdao-enex", "export_file": source_name, "note_index": index, "guid": guid},
+        "source": {"system": "enex", "export_file": source_name, "note_index": index, "guid": guid},
         "attachments": attachments,
     }
 
 
-def import_enex(input_path: Path, output_dir: Path) -> dict:
+def convert_enex(input_path: Path, output_dir: Path) -> dict:
     if not input_path.is_file():
         raise FileNotFoundError(input_path)
     if output_dir.exists() and any(output_dir.iterdir()):
@@ -178,8 +178,8 @@ def import_enex(input_path: Path, output_dir: Path) -> dict:
             stream.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     manifest = {
-        "format": "dream-journal-import-v1",
-        "imported_at": datetime.now(timezone.utc).isoformat(),
+        "format": "bakunotes-import-v1",
+        "converted_at": datetime.now(timezone.utc).isoformat(),
         "source_file": input_path.name,
         "source_sha256": source_sha,
         "source_bytes": len(raw_bytes),
@@ -199,9 +199,9 @@ def main() -> int:
     argument_parser.add_argument("--output", type=Path, required=True, help="Empty output directory")
     args = argument_parser.parse_args()
     try:
-        manifest = import_enex(args.input, args.output)
+        manifest = convert_enex(args.input, args.output)
     except Exception as exc:
-        print(f"Import failed: {exc}", file=sys.stderr)
+        print(f"Conversion failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps({key: manifest[key] for key in ("source_note_count", "converted_count", "error_count", "source_sha256")}, ensure_ascii=False, indent=2))
     return 0 if not manifest["errors"] else 2
