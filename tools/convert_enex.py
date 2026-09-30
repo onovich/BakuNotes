@@ -19,9 +19,11 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import quote
 
 
 BREAK_TAGS = {"br", "p", "div", "li", "ul", "ol", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "table", "blockquote"}
+HEADINGS = {f"h{level}": "#" * level + " " for level in range(1, 7)}
 
 
 class NoteTextParser(HTMLParser):
@@ -29,6 +31,7 @@ class NoteTextParser(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
         self.skip_depth = 0
+        self.links: list[str | None] = []
 
     def break_line(self) -> None:
         if self.parts and not self.parts[-1].endswith("\n"):
@@ -37,17 +40,41 @@ class NoteTextParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in {"script", "style"}:
             self.skip_depth += 1
-        elif not self.skip_depth and tag in BREAK_TAGS:
-            self.break_line()
-        elif not self.skip_depth and tag == "en-media":
-            attributes = dict(attrs)
-            self.parts.append(f"[附件:{attributes.get('hash', '未知')}]")
+        elif not self.skip_depth:
+            if tag in BREAK_TAGS:
+                self.break_line()
+            if tag in HEADINGS:
+                self.parts.append(HEADINGS[tag])
+            elif tag == "li":
+                self.parts.append("- ")
+            elif tag in {"strong", "b"}:
+                self.parts.append("**")
+            elif tag in {"em", "i"}:
+                self.parts.append("*")
+            elif tag == "a":
+                href = dict(attrs).get("href")
+                self.links.append(href)
+                if href:
+                    self.parts.append("[")
+            elif tag == "en-media":
+                attributes = dict(attrs)
+                self.parts.append(f"[附件:{attributes.get('hash', '未知')}]")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in {"script", "style"} and self.skip_depth:
             self.skip_depth -= 1
-        elif not self.skip_depth and tag in BREAK_TAGS:
-            self.break_line()
+        elif not self.skip_depth:
+            if tag in {"strong", "b"}:
+                self.parts.append("**")
+            elif tag in {"em", "i"}:
+                self.parts.append("*")
+            elif tag == "a" and self.links:
+                href = self.links.pop()
+                if href:
+                    url = quote(html.unescape(href), safe=";/?:@&=+$,-_.!~*'#%")
+                    self.parts.append(f"]({url})")
+            if tag in BREAK_TAGS:
+                self.break_line()
 
     def handle_data(self, data: str) -> None:
         if not self.skip_depth:

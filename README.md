@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-BakuNotes (梦貘手记) is a local-first dream journal for writing down dreams, finding older entries, and keeping an independent backup. It also converts notes from supported export formats into BakuNotes records. The Expo project shares its code between the web and iOS.
+BakuNotes (梦貘手记) is a local-first dream journal for writing down dreams, finding older entries, and keeping an independent backup. Entries use plain text or basic Markdown, without rich-text layout. It also converts notes from supported export formats into BakuNotes records. The Expo project shares its code between the web and iOS.
 
 ![BakuNotes illustrated journal and search interface](docs/social-preview.png)
 
@@ -31,7 +31,7 @@ python tools/verify_conversion.py --archive "private/enex-conversion"
 
 The output directory must be empty. In **Import records**, select `dreams.jsonl` and `manifest.json` together. The app verifies that the report matches the records and shows conversion errors and duplicates. Converted notes start unselected; choose the ones to add to the journal. A standalone JSONL backup still imports, but it has no conversion error report.
 
-Every note in the supplied ENEX is converted, whether or not it describes a dream. The converter saves attachment files and metadata, while the app currently imports text records and metadata only; it does not bring attachment files into the journal. [Conversion details](CONVERSION.md) describe the record format and future format categories. The [印象笔记 help center](https://help.yinxiang.com/hc/articles/63067) documents ENEX export in its own client.
+Every note in the supplied ENEX is converted, whether or not it describes a dream. The converter keeps readable text and basic Markdown structure; it does not reproduce fonts or page layout. It saves attachment files and metadata, while the app currently imports text records and metadata only. [Conversion details](CONVERSION.md) describe the record format and future format categories. The [印象笔记 help center](https://help.yinxiang.com/hc/articles/63067) documents ENEX export in its own client.
 
 ## Privacy and backups
 

@@ -9,7 +9,7 @@ BakuNotes accepts files **already exported by the source note application**. It 
 | Structured note archive | ENEX (`.enex`) | Implemented and covered by a synthetic conversion test |
 | Markdown or HTML folder | Exported files and assets | Planned; no converter yet |
 | Plain text or tabular export | TXT, CSV, JSON variants | Planned; each source needs a documented field mapping |
-| PDF or scanned pages | PDF and images | Planned separately; OCR and content review are required when text cannot be extracted |
+| PDF or scanned pages | PDF and images | Deferred; text extraction and OCR are outside the current text-first roadmap |
 
 “Planned” does not mean arbitrary files of that extension can already be imported. Add a converter only after a representative source export and its metadata rules are understood.
 
@@ -23,6 +23,12 @@ python tools/verify_conversion.py --archive "private/enex-conversion"
 ```
 
 The converter does not modify the input. It writes `raw/` (a source copy), `dreams.jsonl` (one converted note per line), `attachments/` (extracted files), and `manifest.json` (counts, checksums, errors). The output is plaintext and must stay outside Git. Select `dreams.jsonl` and `manifest.json` together in **Import records**. The app checks their matching record count and checksum, lists conversion failures and duplicate IDs, and starts with no converted notes selected. A standalone JSONL backup can also be previewed and restored; without a manifest, conversion failures cannot be shown. Every note in the selected ENEX is converted; the tool does not decide whether it is a dream.
+
+## Body text
+
+`body` is editable, UTF-8 **basic Markdown source** inside each JSONL record. JSONL carries the ID, dates, tags, and provenance; it does not require a rich-text document or one `.md` file per note. Ordinary paragraphs remain ordinary text, so older minimally formatted dream notes need no special formatting pass.
+
+The ENEX converter keeps line breaks, headings, bullet items, emphasis, and link targets when present. It does not try to reproduce fonts, colors, tables, page layout, or embedded media. The app currently edits and displays Markdown source as text; it has no rendered Markdown preview. Readable content and reliable metadata take priority over visual fidelity.
 
 ## Common record contract
 

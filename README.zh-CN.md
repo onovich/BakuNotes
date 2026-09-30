@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-BakuNotes（梦貘手记）是一款本地优先的梦境日记，用于记下梦、找回旧记录，并保留独立备份。它也能把受支持的笔记导出格式转换为 BakuNotes 记录。Expo 项目让网页与 iOS 共用一份代码。
+BakuNotes（梦貘手记）是一款本地优先的梦境日记，用于记下梦、找回旧记录，并保留独立备份。正文用普通文本或基础 Markdown，不追求富文本排版。它也能把受支持的笔记导出格式转换为 BakuNotes 记录。Expo 项目让网页与 iOS 共用一份代码。
 
 ![BakuNotes 日记与搜索界面的示意封面](docs/social-preview.png)
 
@@ -31,7 +31,7 @@ python tools/verify_conversion.py --archive "private/enex-conversion"
 
 输出目录必须为空。在“导入记录”中同时选择 `dreams.jsonl` 和 `manifest.json`：应用会核对报告与记录，显示转换失败项及重复项。转换记录默认不勾选，由你决定哪些笔记进入梦库。单独选择 JSONL 备份仍可导入，但无法显示转换错误。
 
-传入的 ENEX 中每篇笔记都会转换，不会自动判断是否为梦境。转换器保存附件文件和元数据；应用目前只导入文字记录与元数据，不会把附件文件带入日记。格式约定及后续格式类别见[转换说明](CONVERSION.md)。[印象笔记帮助中心](https://help.yinxiang.com/hc/articles/63067)说明了其客户端的 ENEX 导出能力。
+传入的 ENEX 中每篇笔记都会转换，不会自动判断是否为梦境。转换器保留可读正文和基础 Markdown 结构，不还原字体和页面版式。它保存附件文件及元数据；应用目前只导入文字记录与元数据。格式约定及后续格式类别见[转换说明](CONVERSION.md)。[印象笔记帮助中心](https://help.yinxiang.com/hc/articles/63067)说明了其客户端的 ENEX 导出能力。
 
 ## 隐私与备份
 

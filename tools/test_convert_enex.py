@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from convert_enex import convert_enex
+from convert_enex import NoteTextParser, convert_enex
 from verify_conversion import verify_conversion
 
 
@@ -26,6 +26,13 @@ SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
 
 
 class ConvertEnexTest(unittest.TestCase):
+    def test_keeps_only_basic_markdown_structure(self):
+        parser = NoteTextParser()
+        parser.feed('<en-note><h2>夜里</h2><div>先是<strong>一盏灯</strong>。</div>'
+                    '<ul><li>海边</li><li><em>回家</em></li></ul>'
+                    '<div>看<a href="https://example.com/sky">天空</a></div></en-note>')
+        self.assertEqual(parser.text(), '## 夜里\n先是**一盏灯**。\n- 海边\n- *回家*\n看[天空](https://example.com/sky)')
+
     def test_preserves_source_and_converts_chinese_text_and_attachment(self):
         with tempfile.TemporaryDirectory() as temp:
             source = Path(temp) / "export.enex"
