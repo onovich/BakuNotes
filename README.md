@@ -22,6 +22,8 @@ Create a dream, add a title or date when you want, and search the library by tit
 
 ## Import text files
 
+For scripts and AI workflows, the [local file-library CLI](docs/CLI.md) supports import preview/commit, search, reading and backup verification. It shares import rules with the app; its file library is separate from browser storage. MCP and a shared web connection are planned.
+
 In **Import records**, select one or more UTF-8 `.txt`, `.md`, or `.markdown` files. Each file becomes one entry: the filename supplies the title and the body stays as text or Markdown source. The preview supports select all and invert selection, plus individual or batch timestamp choices: available file times, detected first/last line dates, import time, or manual input. Choose whether to use the value as the dream date, original note recording time, or both; dates otherwise remain unknown. [Timestamp rules](CONVERSION.md#confirming-timestamps) explain ambiguous formats and missing metadata. Reimporting the same filename and body is marked as a duplicate; changing either creates a new record. Markdown front matter, images, and linked attachments are kept as text without special parsing or file import. Choose text files separately from JSONL backups and manifests.
 
 ## Convert notes from ENEX

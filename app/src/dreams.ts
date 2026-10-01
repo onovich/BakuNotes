@@ -41,12 +41,4 @@ export const makeDream = (): Dream => {
 export const displayTitle = (dream: Dream) =>
   dream.title.trim() || dream.body.trim().split(/\r?\n/)[0]?.slice(0, 28) || '未命名的梦';
 
-export const searchDreams = (dreams: Dream[], query: string): Dream[] => {
-  const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  return dreams
-    .filter((dream) => {
-      const haystack = `${dream.title}\n${dream.body}\n${dream.tags.join(' ')}`.toLocaleLowerCase();
-      return words.every((word) => haystack.includes(word));
-    })
-    .sort((a, b) => (b.dreamDate || b.createdAt).localeCompare(a.dreamDate || a.createdAt));
-};
+export { searchDreams } from './journal';

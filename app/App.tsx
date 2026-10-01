@@ -15,7 +15,8 @@ import { ImportPreviewDialog } from './src/ImportPreview';
 import { CloudPanel } from './src/CloudPanel';
 import { useCloudSync } from './src/useCloudSync';
 import { SaveQueue, type SaveState } from './src/saveQueue';
-import { applyTimeChoice, emptyTimeChoice, type TimeChoice } from './src/importTime';
+import { type TimeChoice } from './src/importTime';
+import { prepareImport } from './src/journal';
 
 const c = {
   canvas: '#E8EFF0', paper: '#F9FBFA', ink: '#203640', muted: '#60757C',
@@ -210,17 +211,8 @@ export default function App() {
     setImportBusy(true);
     let applied = false;
     try {
-      const existing = new Set(dreams.map((dream) => dream.id));
       const importedAt = new Date().toISOString();
-      const additions = indices.flatMap((index) => {
-        const dream = importPreview.dreams[index];
-        if (!dream || existing.has(dream.id)) return [];
-        existing.add(dream.id);
-        return [importPreview.format === 'text'
-          ? applyTimeChoice(dream, importPreview.timeCandidates?.[index] || [],
-            timeChoices[index] || emptyTimeChoice(), importedAt)
-          : dream];
-      });
+      const additions = prepareImport(dreams, importPreview, indices, timeChoices, importedAt);
       if (!additions.length) throw new Error('所选记录已在梦库中，请重新检查');
       const merged = [...additions, ...dreams];
       queue.schedule(merged);
