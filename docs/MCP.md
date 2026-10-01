@@ -1,6 +1,6 @@
 # BakuNotes 本地 MCP
 
-已实现本地 stdio MCP，供支持 MCP 的 AI 客户端使用。服务器与 CLI 共用 `app/tools/operations.mjs`，导入和搜索继续复用应用的 Journal 模块。它管理文件库，尚未连接打开网页的 AsyncStorage。
+已实现本地 stdio MCP，供支持 MCP 的 AI 客户端使用。服务器与 CLI 共用 `app/tools/operations.mjs`，导入和搜索继续复用应用的 Journal 模块。[网页连接模式](WEB_VAULT.md)可操作同一文件库；普通网页的 AsyncStorage 仍独立。
 
 ## 安装和启动
 
@@ -71,4 +71,4 @@
 
 在 `app/` 执行 `npm test`。MCP 测试通过官方 Client 实际启动服务器子进程，执行 initialize、tools/list 和 tools/call，验证导入、重试、搜索、导出校验、第二个库恢复、CLI 互读、只读工具集合、schema 校验、目录及符号链接越界，以及伪造计划不能读取范围外来源文件。所有公开样本均为虚构内容。
 
-尚未实现新建/编辑工具、网页同库连接及远程 MCP；当前也未自动把服务器安装到正在使用的 AI 客户端。
+[网页同库连接](WEB_VAULT.md)已实现。尚未实现新建/编辑工具及远程 MCP；当前也未自动把服务器安装到正在使用的 AI 客户端。

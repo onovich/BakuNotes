@@ -8,7 +8,7 @@ import type { Dream } from './dreams';
 
 const OWNER_KEY = 'dream-cloud-owner-v1';
 
-export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction<Dream[]>>, loaded: boolean) {
+export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction<Dream[]>>, loaded: boolean, enabled = true) {
   const [userId, setUserId] = useState<string | null>(null);
   const [vault, setVault] = useState<VaultEnvelope | null | undefined>(undefined);
   const [key, setKey] = useState<AESEncryptionKey | null>(null);
@@ -22,7 +22,7 @@ export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction
   useEffect(() => { dreamsRef.current = dreams; }, [dreams]);
 
   useEffect(() => {
-    if (!cloud) return;
+    if (!cloud || !enabled) return;
     const client = cloud;
     const applyUser = (next: string | null) => {
       if (userIdRef.current === next) return;
@@ -39,7 +39,7 @@ export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction
       applyUser(session?.user.id || null);
     });
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     if (!userId) return;

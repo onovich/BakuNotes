@@ -12,7 +12,7 @@ try { ({ values: flags, positionals } = parseArgs({ allowPositionals: true, opti
   console.error(JSON.stringify({ ok: false, code: 'INVALID_ARGUMENT', message: error.message }));
   process.exit(2);
 }
-const help = `BakuNotes CLI (Node 24+)\nCommands: status, notes list/get, import preview/commit, backup export/verify\nUse --vault DIRECTORY. File libraries are separate from browser data.\npreview: --files PATH (repeat) --output PLAN.json\ncommit: --plan PLAN.json --choices CHOICES.json OR --select-all (keeps times unknown)\nexport: --output BACKUP.jsonl; verify: --file BACKUP.jsonl\nlist: --query WORDS --offset 0 --limit 50; get: --id ID\nUse --json for machine-readable results. Existing output files are never overwritten.`;
+const help = `BakuNotes CLI (Node 24+)\nCommands: status, notes list/get, import preview/commit, backup export/verify\nUse --vault DIRECTORY. baku-web --vault DIRECTORY connects the web app to this library.\npreview: --files PATH (repeat) --output PLAN.json\ncommit: --plan PLAN.json --choices CHOICES.json OR --select-all (keeps times unknown)\nexport: --output BACKUP.jsonl; verify: --file BACKUP.jsonl\nlist: --query WORDS --offset 0 --limit 50; get: --id ID\nUse --json for machine-readable results. Existing output files are never overwritten.`;
 
 try {
   const result = flags.help || !positionals.length ? { help } : await executeOperation(positionals.join(' '), flags);

@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { once } from 'node:events';
+import http from 'node:http';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { createWebServer } from '../tools/webServer.mjs';
+import { createFileStorage } from '../src/fileStorage.ts';
+import { executeOperation } from '../tools/operations.mjs';
+
+test('web storage, CLI and actual MCP share a vault; conflict and retry preserve data', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'baku-web-'));
+  const vault = path.join(root, 'library');
+  const dist = path.join(root, 'dist');
+  await fs.mkdir(dist); await fs.writeFile(path.join(dist, 'index.html'), '<html>test</html>');
+  const { server, token } = await createWebServer({ vault, dist });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const client = new Client({ name: 'web-vault-test', version: '1' });
+  t.after(async () => { await client.close(); await new Promise(resolve => server.close(resolve)); await fs.rm(root, { recursive: true, force: true }); });
+  await client.connect(new StdioClientTransport({ command: process.execPath,
+    args: ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', path.resolve('tools/mcp.mjs'), '--vault', vault, '--root', root], stderr: 'pipe' }));
+  const source = path.join(root, 'note.txt'); await fs.writeFile(source, '合成笔记\n只用于自动测试');
+  const plan = path.join(root, 'plan.json');
+  await executeOperation('import preview', { vault, files: [source], output: plan });
+  await executeOperation('import commit', { vault, plan, 'select-all': true });
+  const storage = createFileStorage(base, token);
+  const first = await storage.load(); assert.equal(first.length, 1);
+  assert.match(storage.label, /library/);
+  const edited = [{ ...first[0], body: '网页编辑的合成正文' }];
+  await storage.save(edited);
+  const read = await client.callTool({ name: 'notes_get', arguments: { id: first[0].id } });
+  assert.equal(read.isError, undefined);
+  assert.match(JSON.stringify(read.structuredContent), /网页编辑的合成正文/);
+  const other = createFileStorage(base, token); await other.load();
+  await other.save([{ ...edited[0], body: '另一窗口更新' }]);
+  await assert.rejects(storage.save(edited), /先导出.*刷新/);
+  assert.equal((await executeOperation('notes get', { vault, id: first[0].id })).record.body, '另一窗口更新');
+  assert.equal((await createFileStorage(base, token).load())[0].body, '另一窗口更新');
+  let loseResponse = true;
+  const retry = createFileStorage(base, token, async (...args) => {
+    const response = await fetch(...args);
+    if (args[1].method === 'PUT' && loseResponse) { loseResponse = false; throw new Error('connection lost'); }
+    return response;
+  });
+  const latest = await retry.load(); latest[0].title = '重试标题';
+  await assert.rejects(retry.save(latest), /connection lost/);
+  const before = await executeOperation('status', { vault });
+  await retry.save(latest);
+  assert.equal((await executeOperation('status', { vault })).revision, before.revision);
+  assert.equal((await fetch(`${base}/api/library`)).status, 401);
+  assert.equal((await fetch(`${base}/api/library`, { headers: { Authorization: `Bearer ${token}`, Origin: 'https://example.com' } })).status, 403);
+  const wrongHost = await new Promise((resolve, reject) => {
+    http.get(`${base}/`, { headers: { Host: 'evil.example' } }, response => { response.resume(); resolve(response.statusCode); }).on('error', reject);
+  });
+  assert.equal(wrongHost, 403);
+  assert.equal(await (await fetch(`${base}/`)).text(), '<html>test</html>');
+  assert.equal((await fetch(`${base}/vault.json`)).status, 404);
+  const outside = path.join(root, 'outside'); await fs.mkdir(outside); await fs.writeFile(path.join(outside, 'secret.txt'), 'secret');
+  await fs.symlink(outside, path.join(dist, 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
+  assert.equal((await fetch(`${base}/escape/secret.txt`)).status, 403);
+  const invalid = await fetch(`${base}/api/library`, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: before.revision, archive: '{"invalid":true}' }) });
+  assert.equal(invalid.status, 400);
+  assert.equal((await executeOperation('status', { vault })).revision, before.revision);
+  const nextSource = path.join(root, 'second.txt'); await fs.writeFile(nextSource, 'MCP 新增合成记录');
+  const nextPlan = path.join(root, 'second-plan.json');
+  const preview = await client.callTool({ name: 'import_preview', arguments: { files: [nextSource], output: nextPlan } });
+  assert.equal(preview.isError, undefined);
+  const commit = await client.callTool({ name: 'import_commit', arguments: { plan: nextPlan, selectAll: true } });
+  assert.equal(commit.isError, undefined);
+  await assert.rejects(retry.save(latest), /先导出.*刷新/);
+  assert.equal((await createFileStorage(base, token).load()).length, 2);
+});

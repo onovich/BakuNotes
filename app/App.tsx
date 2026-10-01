@@ -9,7 +9,7 @@ import {
   Text, TextInput, useWindowDimensions, View,
 } from 'react-native';
 import { displayTitle, Dream, makeDream, searchDreams, todayLocal } from './src/dreams';
-import { loadDreams, saveDreams } from './src/storage';
+import { loadDreams, saveDreams, connectedLibrary, storageLabel } from './src/storage';
 import { parseImportFiles, serializeDreamArchive, type ImportPreview } from './src/import';
 import { ImportPreviewDialog } from './src/ImportPreview';
 import { CloudPanel } from './src/CloudPanel';
@@ -54,9 +54,9 @@ function Library({ dreams, selectedId, query, setQuery, onSelect, onNew, onImpor
         <Pressable onPress={onExport} accessibilityRole="button" style={s.importButton}>
           <Text style={s.importButtonText}>导出备份</Text>
         </Pressable>
-        <Pressable onPress={onCloud} accessibilityRole="button" style={s.importButton}>
+        {!connectedLibrary && <Pressable onPress={onCloud} accessibilityRole="button" style={s.importButton}>
           <Text style={s.importButtonText}>加密同步</Text>
-        </Pressable>
+        </Pressable>}
       </View>
       <Text style={s.syncStatus}>{syncStatus}</Text>
       {!!importStatus && <Text style={s.importStatus} accessibilityLiveRegion="polite">{importStatus}</Text>}
@@ -135,21 +135,25 @@ export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [saveError, setSaveError] = useState('');
   const [importStatus, setImportStatus] = useState('');
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [importBusy, setImportBusy] = useState(false);
   const [showCloud, setShowCloud] = useState(false);
   const saveQueue = useRef<SaveQueue<Dream[]> | null>(null);
-  if (!saveQueue.current) saveQueue.current = new SaveQueue(saveDreams, setSaveState);
+  if (!saveQueue.current) saveQueue.current = new SaveQueue(async items => {
+    try { await saveDreams(items); setSaveError(''); }
+    catch (error) { setSaveError(error instanceof Error ? error.message : '保存失败'); throw error; }
+  }, setSaveState);
   const queue = saveQueue.current;
-  const sync = useCloudSync(dreams, setDreams, loaded && !loadError);
+  const sync = useCloudSync(dreams, setDreams, loaded && !loadError && !connectedLibrary, !connectedLibrary);
 
   useEffect(() => {
     loadDreams().then((items) => {
       queue.acknowledgeLoaded(items);
       setDreams(items);
       if (items[0]) { setDraft(items[0]); setSelectedId(items[0].id); setMobileView('library'); }
-    }).catch(() => setLoadError('本地数据读取失败。请保留当前设备数据，暂时不要继续编辑。')).finally(() => setLoaded(true));
+    }).catch((error) => setLoadError(error instanceof Error ? `读取失败：${error.message}` : '本地数据读取失败，请暂时不要编辑。')).finally(() => setLoaded(true));
   }, [queue]);
 
   useEffect(() => {
@@ -230,9 +234,9 @@ export default function App() {
     }
   };
   const onRetrySave = () => { void queue.flush().catch(() => {}); };
-  const saveStatus = saveState === 'failed' ? '保存失败，请勿关闭页面'
+  const saveStatus = saveState === 'failed' ? `保存失败：${saveError} 请勿关闭页面`
     : saveState === 'saving' ? '正在保存…'
-      : selectedId ? '已保存在此设备' : '开始写，内容会自动保存';
+      : selectedId ? (connectedLibrary ? '已保存到文件库' : '已保存在此设备') : '开始写，内容会自动保存';
   const onExport = async () => {
     try {
       if (!dreams.length) { setImportStatus('还没有可导出的记录'); return; }
@@ -272,11 +276,11 @@ export default function App() {
       {(wide || mobileView === 'library') && <Library dreams={dreams} selectedId={selectedId}
         query={query} setQuery={setQuery} onSelect={onSelect} onNew={onNew}
         onImport={onImport} onExport={onExport} onCloud={() => setShowCloud(true)}
-        importStatus={importStatus} syncStatus={sync.status}
+        importStatus={saveState === 'failed' && saveError ? `${importStatus} 保存失败：${saveError}` : importStatus} syncStatus={connectedLibrary ? storageLabel() : sync.status}
         saveFailed={saveState === 'failed'} onRetrySave={onRetrySave} />}
       {(wide || mobileView === 'write') && <View style={s.writePanel}>
         {!wide && <View style={s.mobileHeader}><Brand />
-          <Text style={s.localOnly}>{sync.status}</Text></View>}
+          <Text style={s.localOnly}>{connectedLibrary ? storageLabel() : sync.status}</Text></View>}
         <Editor dream={draft} onChange={onChange} status={saveStatus}
           onRetry={saveState === 'failed' ? onRetrySave : null} compact={compact} />
       </View>}
@@ -290,10 +294,10 @@ export default function App() {
         style={[s.navButton, mobileView === 'library' && s.navActive]}>
         <Text style={[s.navText, mobileView === 'library' && s.navTextActive]}>☷ 梦库</Text>
       </Pressable>
-      <Pressable onPress={() => setShowCloud(true)} accessibilityRole="button" style={s.navButton}>
+      {!connectedLibrary && <Pressable onPress={() => setShowCloud(true)} accessibilityRole="button" style={s.navButton}>
         <Text style={s.navText}>☁ 同步</Text>
-      </Pressable>
-    </View> : <Text style={s.desktopLocalOnly}>{sync.status}</Text>}
+      </Pressable>}
+    </View> : <Text style={s.desktopLocalOnly}>{connectedLibrary ? storageLabel() : sync.status}</Text>}
     <Modal visible={showCloud} transparent animationType="fade" onRequestClose={() => setShowCloud(false)}>
       <View style={s.modalBackdrop}>
         <ScrollView contentContainerStyle={s.modalContent} keyboardShouldPersistTaps="handled">
