@@ -2,6 +2,8 @@
 
 状态：当前实现与目标设计。转换格式见 [CONVERSION.md](CONVERSION.md)，实施顺序见 [PLAN.md](PLAN.md)。
 
+CLI/MCP 的共享模块、文件库与浏览器存储连接方案见 [AI 工具设计提案](docs/AI_TOOLING.md)，目前尚未实现。
+
 ## 核心流程
 
 ```text
