@@ -2,7 +2,7 @@
 
 状态：当前实现与目标设计。转换格式见 [CONVERSION.md](CONVERSION.md)，实施顺序见 [PLAN.md](PLAN.md)。
 
-CLI/MCP 的共享模块、文件库与浏览器存储连接方案见 [AI 工具设计提案](docs/AI_TOOLING.md)。[文件库 CLI](docs/CLI.md) 已实现导入与备份流程；MCP 和网页同库连接尚未实现。应用与 CLI 共用 `app/src/journal.ts` 的导入提交及搜索规则。
+CLI/MCP 的共享模块、文件库与浏览器存储连接方案见 [AI 工具设计提案](docs/AI_TOOLING.md)。[文件库 CLI](docs/CLI.md) 和 [本地 stdio MCP](docs/MCP.md) 已实现导入与备份流程，共用 `app/tools/operations.mjs`；网页同库连接尚未实现。应用与工具共用 `app/src/journal.ts` 的导入提交及搜索规则。
 
 ## 核心流程
 
