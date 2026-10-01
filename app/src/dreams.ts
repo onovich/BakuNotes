@@ -14,6 +14,7 @@ export type Dream = {
   sourceCreatedAt?: string;
   sourceUpdatedAt?: string;
   recordedAt?: string | null;
+  importedAt?: string;
   attachments?: Record<string, unknown>[];
 };
 

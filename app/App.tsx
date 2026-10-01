@@ -15,6 +15,7 @@ import { ImportPreviewDialog } from './src/ImportPreview';
 import { CloudPanel } from './src/CloudPanel';
 import { useCloudSync } from './src/useCloudSync';
 import { SaveQueue, type SaveState } from './src/saveQueue';
+import { applyTimeChoice, emptyTimeChoice, type TimeChoice } from './src/importTime';
 
 const c = {
   canvas: '#E8EFF0', paper: '#F9FBFA', ink: '#203640', muted: '#60757C',
@@ -103,6 +104,8 @@ function Editor({ dream, onChange, status, onRetry, compact }: {
           </Pressable>}
         </View>
       </View>
+      {!!dream.recordedAt && <Text style={s.timeMetadata}>原笔记记录时间：{dream.recordedAt.replace('T', ' ')}</Text>}
+      {!!dream.importedAt && <Text style={s.timeMetadata}>导入时间：{new Date(dream.importedAt).toLocaleString()}</Text>}
       <TextInput style={[s.titleInput, compact && s.titleInputCompact]} value={dream.title}
         onChangeText={(title) => onChange({ ...dream, title })}
         placeholder="给这个梦起个名字（可稍后）" placeholderTextColor="#91A3A6"
@@ -187,6 +190,11 @@ export default function App() {
       if (picked.canceled) return;
       const files = await Promise.all(picked.assets.map(async (asset) => ({
         name: asset.name,
+        modifiedAt: (() => {
+          const value = asset.file?.lastModified ?? asset.lastModified;
+          return Number.isFinite(value) && value > 0 && value <= 8.64e15
+            ? new Date(value).toISOString() : undefined;
+        })(),
         content: Platform.OS === 'web' && asset.file
           ? await asset.file.text()
           : await new File(asset.uri).text(),
@@ -197,17 +205,21 @@ export default function App() {
       setImportStatus(error instanceof Error ? `导入预览失败：${error.message}` : '导入预览失败：文件无法读取');
     }
   };
-  const onConfirmImport = async (indices: number[]) => {
+  const onConfirmImport = async (indices: number[], timeChoices: Record<number, TimeChoice>) => {
     if (!importPreview || importBusy) return;
     setImportBusy(true);
     let applied = false;
     try {
       const existing = new Set(dreams.map((dream) => dream.id));
-      const additions = indices.map((index) => importPreview.dreams[index]).filter((dream) => {
-        if (!dream) return false;
-        if (existing.has(dream.id)) return false;
+      const importedAt = new Date().toISOString();
+      const additions = indices.flatMap((index) => {
+        const dream = importPreview.dreams[index];
+        if (!dream || existing.has(dream.id)) return [];
         existing.add(dream.id);
-        return true;
+        return [importPreview.format === 'text'
+          ? applyTimeChoice(dream, importPreview.timeCandidates?.[index] || [],
+            timeChoices[index] || emptyTimeChoice(), importedAt)
+          : dream];
       });
       if (!additions.length) throw new Error('所选记录已在梦库中，请重新检查');
       const merged = [...additions, ...dreams];
@@ -348,6 +360,7 @@ const s = StyleSheet.create({
   topLineCompact: { flexWrap: 'wrap', rowGap: 8 },
   dateGroup: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   fieldLabel: { color: c.muted, fontSize: 12 },
+  timeMetadata: { color: c.muted, fontSize: 11, marginTop: 8 },
   dateInput: { color: c.accent, fontSize: 13, borderBottomWidth: 1, borderBottomColor: c.line, paddingBottom: 3, minWidth: 96 },
   saveStatus: { color: c.muted, fontSize: 11, paddingTop: 2, textAlign: 'right' },
   saveGroup: { alignItems: 'flex-end', gap: 4 },

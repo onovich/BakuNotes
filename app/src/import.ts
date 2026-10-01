@@ -1,6 +1,7 @@
 import type { Dream } from './dreams';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
+import { buildTimeCandidates, type TimeCandidate } from './importTime.ts';
 
 export type ConversionError = { noteIndex: number; title: string | null; message: string };
 export type ConversionReport = {
@@ -9,8 +10,9 @@ export type ConversionReport = {
   convertedCount: number;
   errors: ConversionError[];
 };
-export type ImportFile = { name: string; content: string };
-export type ImportPreview = { filename: string; dreams: Dream[]; report: ConversionReport | null; format: 'jsonl' | 'text' };
+export type ImportFile = { name: string; content: string; createdAt?: string; modifiedAt?: string };
+export type ImportPreview = { filename: string; dreams: Dream[]; report: ConversionReport | null;
+  format: 'jsonl' | 'text'; timeCandidates?: TimeCandidate[][] };
 export type ImportCandidate = { index: number; dream: Dream; duplicate: 'existing' | 'file' | null };
 
 type ArchiveRecord = {
@@ -21,6 +23,7 @@ type ArchiveRecord = {
   created_at?: unknown;
   updated_at?: unknown;
   recorded_at?: unknown;
+  imported_at?: unknown;
   source_created_at?: unknown;
   source_updated_at?: unknown;
   tags?: unknown;
@@ -55,7 +58,7 @@ export function parseDreamArchive(text: string, allowEmpty = false): Dream[] {
     if (!Array.isArray(attachments) || !attachments.every((entry) => isRecord(entry) && typeof entry.path === 'string')) {
       throw new Error(`第 ${index + 1} 行的附件信息格式不正确`);
     }
-    const createdAt = typeof item.created_at === 'string' ? item.created_at
+    const createdAt = item.created_at === null ? '' : typeof item.created_at === 'string' ? item.created_at
       : typeof item.recorded_at === 'string' ? item.recorded_at
       : typeof item.source_created_at === 'string' ? item.source_created_at : '';
     return {
@@ -64,7 +67,7 @@ export function parseDreamArchive(text: string, allowEmpty = false): Dream[] {
       body: item.body,
       dreamDate: typeof item.dream_date === 'string' ? item.dream_date : '',
       createdAt,
-      updatedAt: typeof item.updated_at === 'string' ? item.updated_at
+      updatedAt: item.updated_at === null ? '' : typeof item.updated_at === 'string' ? item.updated_at
         : typeof item.source_updated_at === 'string' ? item.source_updated_at : createdAt,
       tags: Array.isArray(item.tags) ? item.tags as string[] : [],
       source: source?.system === 'dream-journal' || !source ? 'new' : source.system as string,
@@ -73,16 +76,19 @@ export function parseDreamArchive(text: string, allowEmpty = false): Dream[] {
       sourceCreatedAt: typeof item.source_created_at === 'string' ? item.source_created_at : undefined,
       sourceUpdatedAt: typeof item.source_updated_at === 'string' ? item.source_updated_at : undefined,
       recordedAt: typeof item.recorded_at === 'string' ? item.recorded_at : item.recorded_at === null ? null : undefined,
+      importedAt: typeof item.imported_at === 'string' ? item.imported_at : undefined,
       attachments: attachments as Record<string, unknown>[],
     };
   });
 }
 
-export function parseImportFiles(files: ImportFile[]): ImportPreview {
+export function parseImportFiles(files: ImportFile[], previewAt = new Date().toISOString()): ImportPreview {
   if (files.length && files.every((file) => /\.(txt|md|markdown)$/i.test(file.name))) {
+    const dreams = files.map(parseTextNote);
     return {
       filename: files.length === 1 ? files[0].name : `${files.length} 个文字文件`,
-      dreams: files.map(parseTextNote),
+      dreams,
+      timeCandidates: dreams.map((dream, index) => buildTimeCandidates(dream.body, files[index], previewAt)),
       report: null,
       format: 'text',
     };
@@ -161,6 +167,8 @@ function parseTextNote(file: ImportFile): Dream {
     tags: [],
     source: system,
     sourceDetails: { system, filename: file.name, content_sha256: hash(body) },
+    sourceCreatedAt: file.createdAt,
+    sourceUpdatedAt: file.modifiedAt,
     attachments: [],
   };
 }
@@ -184,6 +192,7 @@ export function serializeDreamArchive(dreams: Dream[]): string {
     created_at: dream.createdAt || null,
     updated_at: dream.updatedAt || null,
     recorded_at: dream.recordedAt === null ? null : dream.recordedAt || dream.createdAt || null,
+    ...(dream.importedAt ? { imported_at: dream.importedAt } : {}),
     source_created_at: dream.sourceCreatedAt || null,
     source_updated_at: dream.sourceUpdatedAt || dream.updatedAt || null,
     tags: dream.tags,

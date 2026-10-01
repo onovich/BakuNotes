@@ -18,7 +18,17 @@ BakuNotes accepts files **already exported by the source note application**. It 
 
 Select one or more UTF-8 `.txt`, `.md`, or `.markdown` files in **Import records**, separately from JSONL and manifests. Each nonempty file becomes one selectable entry, initially unselected. Empty content, null characters or the replacement character U+FFFD stop the whole preview with the filename in the error; check the encoding and resave as UTF-8. No records are saved at that stage.
 
-The filename without its extension becomes the title. The body keeps its content, including Markdown headings and front matter as literal text; only an initial UTF-8 BOM is removed and line endings are normalized to LF. No date, tag, attachment or front-matter field is inferred. Dates remain unknown. Images and linked files are not loaded.
+The filename without its extension becomes the title. The body keeps its content, including Markdown headings and front matter as literal text; only an initial UTF-8 BOM is removed and line endings are normalized to LF. Tags, attachments and front-matter fields are not parsed. Images and linked files are not loaded.
+
+### Confirming timestamps
+
+Dates stay unknown until you explicitly adopt a candidate. The preview offers file creation time only when supplied, file modification time when available, the current import time, and manual input. The current document picker does not supply original file creation time. File modification metadata can change during export or copying, and some providers substitute the current time when it is unavailable; it is not proof of when the note was written.
+
+The first and last nonempty body lines are checked for explicit dates. Candidates appear only when detected. Supported forms include year-first dates with hyphens, slashes or dots, Chinese numeric dates and times, compact `YYYYMMDD`, fullwidth digits, and optional hours/minutes/seconds with an explicit zone. Year-last forms such as `01/10/2026` show both valid day/month and month/day interpretations for confirmation. Multiple dates on a boundary line are separate candidates. Relative dates, missing years and unsupported prose are not guessed. A one-line note is checked once.
+
+Choose the source and the destination: dream date, original note recording time, or both. Manual input appears when selected; invalid or ambiguous manual dates must be corrected before import. Date-only values remain date-only; timestamps without a zone retain that absence. Adopting a dream date uses the stated calendar day without converting time zones. The body is unchanged.
+
+Select all, clear and invert selection exclude duplicates. Apply a batch rule to selected entries, then adjust individual entries as needed. Each file uses its own matching candidate; missing or ambiguous matches require an individual choice or an explicit decision to keep the time unknown. No alternate timestamp is silently substituted. JSONL backups preserve `imported_at`, source file times and `source.time_selection` (chosen source, value and destination). Import time records the actual confirmation time separately from the time adopted by the user. These choices do not change the stable record ID.
 
 IDs are stable hashes of format, exact filename and normalized body. Repeated import detects identical input, including after editing the imported journal entry; changing the source filename or body creates a separate record rather than updating the earlier one. Source metadata stores the filename and body checksum, and survives JSONL backup and restore. Keep original files separately; direct import does not create a source-file copy.
 
