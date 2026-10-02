@@ -183,7 +183,9 @@ export default function App() {
   const queue = saveQueue.current;
   const persistMerged = useCallback(async (incoming: Dream[], snapshot: Dream[]) => {
     const merged = mergeWhileEditing(currentNotes.current, snapshot, incoming);
-    currentNotes.current = merged; setDreams(merged); queue.schedule(merged); await queue.flush();
+    currentNotes.current = merged; setDreams(merged);
+    setDraft(current => merged.find(note => note.id === current.id) || current);
+    queue.schedule(merged); await queue.flush();
   }, [queue]);
   const sync = useCloudSync(dreams, setDreams, loaded && !loadError && !connectedLibrary, !connectedLibrary, persistMerged);
 
