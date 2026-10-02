@@ -8,7 +8,8 @@ import type { Dream } from './dreams';
 
 const OWNER_KEY = 'dream-cloud-owner-v1';
 
-export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction<Dream[]>>, loaded: boolean, enabled = true) {
+export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction<Dream[]>>, loaded: boolean, enabled = true,
+  persistMerged?: (incoming: Dream[], snapshot: Dream[]) => Promise<void>) {
   const [userId, setUserId] = useState<string | null>(null);
   const [vault, setVault] = useState<VaultEnvelope | null | undefined>(undefined);
   const [key, setKey] = useState<AESEncryptionKey | null>(null);
@@ -18,6 +19,8 @@ export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction
   const userIdRef = useRef<string | null>(null);
   const baselineRef = useRef<Baseline | null>(null);
   const runningRef = useRef(false);
+  const keyRef = useRef(key);
+  useEffect(() => { keyRef.current = key; }, [key]);
 
   useEffect(() => { dreamsRef.current = dreams; }, [dreams]);
 
@@ -27,6 +30,7 @@ export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction
     const applyUser = (next: string | null) => {
       if (userIdRef.current === next) return;
       userIdRef.current = next;
+      keyRef.current = null;
       setKey(null); setVault(undefined); baselineRef.current = null;
       setUserId(next);
       if (!next) setStatus('未登录');
@@ -74,7 +78,7 @@ export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction
     if (!cloud) return;
     const { error } = await cloud.auth.signOut();
     if (error) throw error;
-    userIdRef.current = null; setKey(null); setVault(undefined); setUserId(null); baselineRef.current = null;
+    userIdRef.current = null; keyRef.current = null; setKey(null); setVault(undefined); setUserId(null); baselineRef.current = null;
   };
   const createEncryptedVault = async (passphrase: string) => {
     if (!userId) throw new Error('请先登录');
@@ -94,7 +98,7 @@ export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction
       setKey(opened); setStatus('加密档案已解锁，正在准备同步');
     } finally { setBusy(false); }
   };
-  const lock = () => { setKey(null); baselineRef.current = null; setStatus('已锁定'); };
+  const lock = () => { keyRef.current = null; setKey(null); baselineRef.current = null; setStatus('已锁定'); };
 
   const syncNow = useCallback(async () => {
     if (!loaded || !userId || !key || runningRef.current) return;
@@ -108,26 +112,18 @@ export function useCloudSync(dreams: Dream[], setDreams: Dispatch<SetStateAction
       const baseline = baselineRef.current ?? await loadBaseline(userId);
       const snapshot = dreamsRef.current;
       const result = await syncSnapshot(userId, snapshot, baseline, key);
+      if (userIdRef.current !== userId || keyRef.current !== key) return;
+      if (!persistMerged) throw new Error('本地保存接口尚未配置');
+      await persistMerged(result.dreams, snapshot);
+      if (userIdRef.current !== userId || keyRef.current !== key) return;
       await saveBaseline(userId, result.baseline);
       baselineRef.current = result.baseline;
       if (!owner) await AsyncStorage.setItem(OWNER_KEY, userId);
-      const snapshotById = new Map(snapshot.map((dream) => [dream.id, JSON.stringify(dream)]));
-      setDreams((current) => {
-        const currentById = new Map(current.map((dream) => [dream.id, dream]));
-        const merged = result.dreams.map((dream) => {
-          const now = currentById.get(dream.id);
-          const before = snapshotById.get(dream.id);
-          return now && before && JSON.stringify(now) !== before ? now : dream;
-        });
-        const mergedIds = new Set(merged.map((dream) => dream.id));
-        for (const dream of current) if (!mergedIds.has(dream.id) && !snapshotById.has(dream.id)) merged.push(dream);
-        return JSON.stringify(merged) === JSON.stringify(current) ? current : merged;
-      });
       setStatus(result.conflicts ? `已同步，保留 ${result.conflicts} 篇冲突副本` : '已加密同步');
     } catch (error) {
       setStatus(`同步失败：${error instanceof Error ? error.message : String(error)}`);
     } finally { runningRef.current = false; }
-  }, [userId, key, loaded, setDreams]);
+  }, [userId, key, loaded, persistMerged]);
 
   useEffect(() => {
     if (!key) return;

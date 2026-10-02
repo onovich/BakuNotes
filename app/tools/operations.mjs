@@ -18,13 +18,30 @@ const writeNew = async (filename, content) => {
   } finally { await fs.rm(temporary, { force: true }); }
 };
 async function inputs(paths, guard) {
-  return Promise.all(paths.map(async filename => {
+  const expanded = [];
+  async function walk(directory, base) {
+    await guard(directory);
+    const entries = (await fs.readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const filename = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) await walk(filename, base);
+      else if (entry.isFile() && /\.(txt|md|markdown)$/i.test(entry.name)) expanded.push({ filename, name: `${path.basename(base)}/${path.relative(base, filename).replaceAll('\\', '/')}` });
+    }
+  }
+  for (const filename of paths) {
+    await guard(filename);
+    if ((await fs.stat(filename)).isDirectory()) await walk(filename, filename);
+    else expanded.push({ filename, name: path.basename(filename) });
+  }
+  if (!expanded.length) fail('INVALID_ARGUMENT', 'No TXT or Markdown files in selected directories');
+  return Promise.all(expanded.map(async ({ filename, name }) => {
     await guard(filename);
     const absolute = await fs.realpath(filename);
     const stat = await fs.stat(absolute);
     const content = await fs.readFile(absolute, 'utf8');
     return { path: absolute, sha256: hash(content), modifiedAt: stat.mtime.toISOString(),
-      name: path.basename(absolute), content };
+      name, content };
   }));
 }
 export async function executeOperation(command, flags, guard = async () => {}) {
@@ -91,7 +108,7 @@ export async function executeOperation(command, flags, guard = async () => {}) {
     const files = await inputs(flags.files, guard), previewAt = new Date().toISOString();
     const preview = parseImportFiles(files, previewAt);
     const plan = { version: 1, vault, revision: state.revision, previewAt,
-      files: files.map(({ path, sha256, modifiedAt }) => ({ path, sha256, modifiedAt })) };
+      files: files.map(({ path, name, sha256, modifiedAt }) => ({ path, name, sha256, modifiedAt })) };
     plan.id = hash(JSON.stringify(plan));
     await writeNew(requireFlag('output'), JSON.stringify(plan, null, 2));
     const records = buildImportCandidates(preview.dreams, state.dreams.map(d => d.id)).map(c => ({
@@ -100,7 +117,7 @@ export async function executeOperation(command, flags, guard = async () => {}) {
     const choicesTemplate = records.filter(r => !r.duplicate).map(r => ({ id: r.id, selected: false,
       time: { key: 'none', manual: '', target: 'dreamDate' } }));
     if (flags['choices-output']) await writeNew(flags['choices-output'], JSON.stringify(choicesTemplate, null, 2));
-    return { plan: path.resolve(flags.output), planId: plan.id, revision: state.revision, records, choicesTemplate };
+    return { plan: path.resolve(flags.output), planId: plan.id, revision: state.revision, records, choicesTemplate, errors: preview.report?.errors || [] };
   }
   if (command === 'import commit') {
     if (!!(flags.choices || flags.choiceRows !== undefined) === !!flags['select-all']) fail('INVALID_ARGUMENT', 'Use exactly one of --choices or --select-all');
@@ -118,6 +135,7 @@ export async function executeOperation(command, flags, guard = async () => {}) {
       }
       if (current.revision !== plan.revision) fail('CONFLICT', 'Vault changed; preview again');
       const files = await inputs(plan.files.map(f => f.path), guard);
+      files.forEach((file, i) => { file.name = plan.files[i].name || file.name; });
       if (files.some((f,i) => f.sha256 !== plan.files[i].sha256 || f.modifiedAt !== plan.files[i].modifiedAt)) fail('SOURCE_CHANGED', 'Source files changed; preview again');
       const preview = parseImportFiles(files, plan.previewAt), selected = [], choices = {};
       for (const row of choiceRows || []) if (!preview.dreams.some(d => d.id === row.id)) fail('INVALID_CHOICES', 'Unknown record ID');

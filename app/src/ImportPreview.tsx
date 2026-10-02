@@ -123,7 +123,7 @@ export function ImportPreviewDialog({ preview, existingIds, busy, error, onClose
               未选择 manifest.json，无法显示转换错误。如果这是转换结果，请同时选择 JSONL 和 manifest.json。
             </Text>}
         <Text style={styles.notice}>
-          附件文件不会导入日记或进入 JSONL 备份；仅保留附件元数据。
+          来源笔记的外部附件仅保留元数据；BakuNotes 内嵌原音会随 JSONL 备份保留。
           {attachmentCount ? ` 本次记录含 ${attachmentCount} 个附件。` : ''}
         </Text>
         {!!error && <Text style={styles.errorText}>{error}</Text>}

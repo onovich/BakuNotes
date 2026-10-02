@@ -40,13 +40,36 @@ export function updateNote(note: Dream, fields: Partial<NoteFields>, now: string
   return next;
 }
 
-export const searchDreams = (dreams: Dream[], query: string): Dream[] => {
+export type JournalSort = 'date' | 'oldest' | 'recorded' | 'updated';
+export const searchDreams = (dreams: Dream[], query: string, options: {
+  trash?: boolean; tag?: string; sort?: JournalSort;
+} = {}): Dream[] => {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return dreams.filter(dream => {
+    if (!!dream.trashedAt !== !!options.trash || (options.tag && !dream.tags.includes(options.tag))) return false;
     const haystack = `${dream.title}\n${dream.body}\n${dream.tags.join(' ')}`.toLocaleLowerCase();
     return words.every(word => haystack.includes(word));
-  }).sort((a, b) => (b.dreamDate || b.createdAt).localeCompare(a.dreamDate || a.createdAt));
+  }).sort((a, b) => {
+    const field = (note: Dream) => options.sort === 'recorded' ? note.recordedAt || '' : options.sort === 'updated' ? note.updatedAt : note.dreamDate;
+    const left = field(a), right = field(b);
+    if (!left || !right) return !left && right ? 1 : left && !right ? -1 : a.id.localeCompare(b.id);
+    return (options.sort === 'oldest' ? left.localeCompare(right) : right.localeCompare(left)) || a.id.localeCompare(b.id);
+  });
 };
+
+export function setNoteTrashed(note: Dream, trash: boolean, now: string): Dream {
+  return { ...note, trashedAt: trash ? now : null, updatedAt: now };
+}
+
+export type RecoverySnapshot = { id: string; snapshot: Dream[]; baseline: Dream[]; savedAt: string };
+export function recoverNoteCopies(current: Dream[], recovery: RecoverySnapshot, now: string): Dream[] {
+  const baseline = new Map(recovery.baseline.map(note => [note.id, JSON.stringify(note)]));
+  const existing = new Map(current.map(note => [note.id, JSON.stringify(note)]));
+  const copies = recovery.snapshot.filter(note => baseline.get(note.id) !== JSON.stringify(note) && existing.get(note.id) !== JSON.stringify(note))
+    .map(note => ({ ...note, id: `recovery-${recovery.id}-${note.id}`, title: `${note.title || '未命名的梦'}（恢复副本）`, updatedAt: now }));
+  const ids = new Set(current.map(note => note.id));
+  return [...copies.filter(note => !ids.has(note.id)), ...current];
+}
 
 // UI and command-line imports share selection, validation and duplicate rules.
 export function prepareImport(existing: Dream[], preview: ImportPreview, indices: number[],

@@ -1,0 +1,31 @@
+name: Verify
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+        working-directory: app
+      - run: npm test
+        working-directory: app
+      - run: npx tsc --noEmit
+        working-directory: app
+      - run: npm run lint
+        working-directory: app
+      - run: python tools/test_convert_enex.py
+      - run: npx expo export --platform web
+        working-directory: app

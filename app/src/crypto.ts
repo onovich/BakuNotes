@@ -87,6 +87,7 @@ export async function decryptDream(record: EncryptedDream, key: AESEncryptionKey
       !Array.isArray(dream.tags) || !dream.tags.every((tag) => typeof tag === 'string')) {
     throw new Error('解密后的记录格式不正确');
   }
+  if (dream.trashedAt !== undefined && dream.trashedAt !== null && typeof dream.trashedAt !== 'string') throw new Error('回收站信息格式不正确');
   if (await cloudIdForDream(dream.id, key) !== record.id) throw new Error('加密记录标识不匹配');
   return dream as Dream;
 }

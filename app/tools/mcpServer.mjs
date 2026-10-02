@@ -53,7 +53,7 @@ export async function createBakuServer({ vault, roots, readOnly = false }) {
     register('import_commit', 'Commit a saved plan using explicit record choices or selectAll. Missing text times remain unknown; no records are replaced. Repeated identical commits return the original receipt.', {
       plan: filename, choices: z.array(choice).optional(), selectAll: z.boolean().optional(),
     }, 'import commit', ({ plan, choices, selectAll }) => ({ plan, choiceRows: choices, 'select-all': selectAll }), true);
-    register('backup_export', 'Write a JSONL backup of the configured library to a new file; never overwrite an existing file. Attachment bytes are excluded.', { output: filename }, 'backup export', args => args, true);
+    register('backup_export', 'Write a JSONL backup to a new file; never overwrite. Embedded audio is preserved; external attachment files are not copied.', { output: filename }, 'backup export', args => args, true);
   }
   return server;
 }

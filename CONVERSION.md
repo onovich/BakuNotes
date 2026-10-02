@@ -53,6 +53,8 @@ The ENEX converter keeps line breaks, headings, bullet items, emphasis, and link
 
 Converters produce UTF-8 JSONL records with stable `id`, `title`, `body`, nullable `dream_date`, nullable `recorded_at`, separate `source_created_at` and `source_updated_at`, `tags`, `source`, and `attachments`. The source object identifies the input format and enough original metadata to trace the record. A note's creation date is never silently treated as the date of the dream.
 
-The app currently reads title, body, dates, tags, source metadata, and attachment metadata from this JSONL. Attachment binaries remain in the private conversion output; the journal does not display or sync them yet. Its JSONL backup export preserves the metadata, but it is not an attachment-file backup.
+The app reads title, body, dates, tags, source metadata, and attachment metadata from JSONL. External ENEX attachment binaries remain in the private conversion output and require a separate file backup. BakuNotes embedded voice clips carry base64 audio and are preserved in JSONL backups and encrypted records. Optional `trashed_at` preserves recoverable-trash state; absent or null means active. Older clients that ignore this field do not preserve trash behavior.
+
+Web and CLI folder imports recursively read UTF-8 TXT/MD/MARKDOWN. Relative paths distinguish identical basenames. Per-file failures are listed while valid files remain selectable; unsupported types are skipped. The CLI skips symbolic links. Linked images and front matter remain literal text.
 
 Future format converters should meet this same contract, report unconverted items explicitly, use stable IDs across repeated runs, and keep source-specific parsing inside the converter. Conversion and the source application's export are separate steps.

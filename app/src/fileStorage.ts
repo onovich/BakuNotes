@@ -4,6 +4,7 @@ import { parseDreamArchive, serializeDreamArchive } from './import.ts';
 export function createFileStorage(base: string, token: string, request: typeof fetch = fetch) {
   let revision: number | null = null;
   let label = '连接本地文件库';
+  let identity = '';
   async function call(method: string, body?: unknown) {
     const response = await request(`${base}/api/library`, {
       method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -17,11 +18,13 @@ export function createFileStorage(base: string, token: string, request: typeof f
   }
   return {
     get label() { return label; },
+    get identity() { return identity; },
     async load(): Promise<Dream[]> {
       const result = await call('GET');
       const dreams = parseDreamArchive(result.archive, true);
       revision = result.revision;
       label = `本地文件库 · ${result.name}`;
+      identity = result.libraryId || result.name;
       return dreams;
     },
     async save(dreams: Dream[]): Promise<void> {

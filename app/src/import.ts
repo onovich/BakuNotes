@@ -1,7 +1,7 @@
 import type { Dream } from './dreams';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import { buildTimeCandidates, type TimeCandidate } from './importTime.ts';
+import { buildTimeCandidates, parseImportTime, type TimeCandidate } from './importTime.ts';
 
 export type ConversionError = { noteIndex: number; title: string | null; message: string };
 export type ConversionReport = {
@@ -10,7 +10,7 @@ export type ConversionReport = {
   convertedCount: number;
   errors: ConversionError[];
 };
-export type ImportFile = { name: string; content: string; createdAt?: string; modifiedAt?: string };
+export type ImportFile = { name: string; content: string; createdAt?: string; modifiedAt?: string; error?: string };
 export type ImportPreview = { filename: string; dreams: Dream[]; report: ConversionReport | null;
   format: 'jsonl' | 'text'; timeCandidates?: TimeCandidate[][] };
 export type ImportCandidate = { index: number; dream: Dream; duplicate: 'existing' | 'file' | null };
@@ -24,6 +24,7 @@ type ArchiveRecord = {
   updated_at?: unknown;
   recorded_at?: unknown;
   imported_at?: unknown;
+  trashed_at?: unknown;
   source_created_at?: unknown;
   source_updated_at?: unknown;
   tags?: unknown;
@@ -55,6 +56,8 @@ export function parseDreamArchive(text: string, allowEmpty = false): Dream[] {
     }
     const source = item.source as Record<string, unknown> | undefined;
     const attachments = item.attachments === undefined ? [] : item.attachments;
+    if (item.trashed_at !== undefined && item.trashed_at !== null &&
+        (typeof item.trashed_at !== 'string' || !parseImportTime(item.trashed_at))) throw new Error(`第 ${index + 1} 行的回收站时间格式不正确`);
     if (!Array.isArray(attachments) || !attachments.every((entry) => isRecord(entry) && typeof entry.path === 'string')) {
       throw new Error(`第 ${index + 1} 行的附件信息格式不正确`);
     }
@@ -77,6 +80,7 @@ export function parseDreamArchive(text: string, allowEmpty = false): Dream[] {
       sourceUpdatedAt: typeof item.source_updated_at === 'string' ? item.source_updated_at : undefined,
       recordedAt: typeof item.recorded_at === 'string' ? item.recorded_at : item.recorded_at === null ? null : undefined,
       importedAt: typeof item.imported_at === 'string' ? item.imported_at : undefined,
+      ...(item.trashed_at !== undefined ? { trashedAt: item.trashed_at as string | null } : {}),
       attachments: attachments as Record<string, unknown>[],
     };
   });
@@ -84,12 +88,17 @@ export function parseDreamArchive(text: string, allowEmpty = false): Dream[] {
 
 export function parseImportFiles(files: ImportFile[], previewAt = new Date().toISOString()): ImportPreview {
   if (files.length && files.every((file) => /\.(txt|md|markdown)$/i.test(file.name))) {
-    const dreams = files.map(parseTextNote);
+    const dreams: Dream[] = [], validFiles: ImportFile[] = [], errors: ConversionError[] = [];
+    files.forEach((file, index) => {
+      try { if (file.error) throw new Error(file.error); dreams.push(parseTextNote(file)); validFiles.push(file); }
+      catch (error) { errors.push({ noteIndex: index + 1, title: file.name, message: error instanceof Error ? error.message : '文件无法读取' }); }
+    });
+    if (!dreams.length) throw new Error(errors.map(error => `${error.title}：${error.message}`).join('\n'));
     return {
       filename: files.length === 1 ? files[0].name : `${files.length} 个文字文件`,
       dreams,
-      timeCandidates: dreams.map((dream, index) => buildTimeCandidates(dream.body, files[index], previewAt)),
-      report: null,
+      timeCandidates: dreams.map((dream, index) => buildTimeCandidates(dream.body, validFiles[index], previewAt)),
+      report: errors.length ? { sourceFile: `${files.length} 个文字文件`, sourceNoteCount: files.length, convertedCount: dreams.length, errors } : null,
       format: 'text',
     };
   }
@@ -101,6 +110,7 @@ export function parseImportFiles(files: ImportFile[], previewAt = new Date().toI
   const archiveFiles = files.filter((file) => file !== manifestFile);
   if (archiveFiles.length !== 1) throw new Error('请选择一个 JSONL 文件，可同时选择 manifest.json');
   const archive = archiveFiles[0];
+  if (archive.error || manifestFile?.error) throw new Error(archive.error || manifestFile?.error);
   if (/\.enex$/i.test(archive.name)) throw new Error('请先用 ENEX 转换器生成 dreams.jsonl，再导入应用');
   const dreams = parseDreamArchive(archive.content, !!manifestFile);
   if (!manifestFile) return { filename: archive.name, dreams, report: null, format: 'jsonl' };
@@ -193,6 +203,7 @@ export function serializeDreamArchive(dreams: Dream[]): string {
     updated_at: dream.updatedAt || null,
     recorded_at: dream.recordedAt === null ? null : dream.recordedAt || dream.createdAt || null,
     ...(dream.importedAt ? { imported_at: dream.importedAt } : {}),
+    ...(dream.trashedAt !== undefined ? { trashed_at: dream.trashedAt } : {}),
     source_created_at: dream.sourceCreatedAt || null,
     source_updated_at: dream.sourceUpdatedAt || dream.updatedAt || null,
     tags: dream.tags,

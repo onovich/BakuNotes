@@ -8,6 +8,8 @@ BakuNotes (梦貘手记) is a local-first dream journal for writing down dreams,
 
 > **Current status:** Local writing, search, JSONL import/export with import preview, direct TXT/Markdown import, and ENEX conversion are implemented. Other note formats are planned. Encrypted Supabase sync is present in code but has not been verified across real devices. There is no hosted web release or signed iPhone build yet.
 
+Daily journaling includes validated dates, editable tags and filters, sorting, recoverable trash, and persistent conflict-draft recovery for connected file libraries. Web users can import text folders recursively and save short raw audio clips. See [daily use and validation](docs/DAILY_USE.md) and [release preparation](docs/RELEASE.md). Real microphone, cloud and iPhone acceptance remains pending.
+
 ## Try it locally
 
 Requires Node.js and npm. A cloud account is not needed for local use.

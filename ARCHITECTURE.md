@@ -4,6 +4,8 @@
 
 CLI/MCP 的共享模块、文件库与浏览器存储连接方案见 [AI 工具设计提案](docs/AI_TOOLING.md)。[文件库 CLI](docs/CLI.md) 和 [本地 stdio MCP](docs/MCP.md) 已实现导入与备份流程，共用 `app/tools/operations.mjs`；[网页连接模式](docs/WEB_VAULT.md)通过本地 HTTP 服务读写同一文件库，所有写入共用文件锁、revision 校验与原子快照替换。普通设备模式仍使用 AsyncStorage。应用与工具共用 `app/src/journal.ts` 的导入提交及搜索规则。
 
+2026-10-02：`journal.ts` 统一字段校验、排序、回收站与恢复副本；`EntryDetails.tsx` 处理日期标签；`filePicker.ts` 隔离网页文件夹选择；`syncEngine.ts` 注入接口运行同步与稳定冲突副本，编排器在本地持久化后推进基线；`voiceCapture.ts` 和 `WebVoice.tsx` 处理网页原音。内嵌原音随 JSONL 和加密记录保存。使用和限制见 [DAILY_USE.md](docs/DAILY_USE.md)。
+
 ## 核心流程
 
 ```text
@@ -16,7 +18,7 @@ CLI/MCP 的共享模块、文件库与浏览器存储连接方案见 [AI 工具�
                  JSONL 备份
 ```
 
-BakuNotes 不负责登录来源笔记应用或执行其导出。转换器只接收用户已有的导出文件。JSONL 是转换器与日记应用之间的稳定接口，`body` 字段放基础 Markdown 源文本；普通文本无需额外转换。新增输入格式时保留同一字段含义和校验要求。现有 ENEX 转换器可用，UTF-8 TXT / Markdown 单文件或多文件可在应用中直接导入；文件夹和其他结构化格式尚未实现。
+BakuNotes 不负责登录来源笔记应用或执行其导出。转换器只接收用户已有的导出文件。JSONL 是转换器与日记应用之间的稳定接口，`body` 字段放基础 Markdown 源文本；普通文本无需额外转换。新增输入格式时保留同一字段含义和校验要求。现有 ENEX 转换器可用，UTF-8 TXT / Markdown 单文件或多文件可在应用中直接导入；文字文件夹递归导入已实现，其他结构化格式尚未实现。
 
 ## 当前模块
 

@@ -1,7 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { readVault, transact, VaultError } from './fileVault.mjs';
 import { parseDreamArchive, serializeDreamArchive } from '../src/import.ts';
 import { createPathGuard } from './pathScope.mjs';
@@ -29,7 +29,7 @@ export async function createWebServer({ vault, dist, token = randomBytes(32).toS
         if (url.pathname !== '/api/library') return json(404, { code: 'NOT_FOUND' });
         if (req.method === 'GET') {
           const state = await readVault(vault);
-          return json(200, { revision: state.revision, name: path.basename(vault), archive: serializeDreamArchive(state.dreams) });
+          return json(200, { revision: state.revision, name: path.basename(vault), libraryId: createHash('sha256').update(vault).digest('hex'), archive: serializeDreamArchive(state.dreams) });
         }
         if (req.method !== 'PUT') return json(405, { code: 'METHOD_NOT_ALLOWED' });
         if (!req.headers['content-type']?.startsWith('application/json')) return json(415, { code: 'INVALID_CONTENT_TYPE' });

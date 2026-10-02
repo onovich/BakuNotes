@@ -42,7 +42,7 @@
 .\baku.cmd import preview --vault private/my-vault --files "path/to/note.txt" --files "path/to/second.md" --output private/import-plan.json --choices-output private/import-choices.json --json
 ```
 
-每个输入使用一个 `--files`。支持与应用相同的 TXT/MD/MARKDOWN、JSONL、JSONL + manifest.json；不要混选文字文件和 JSONL。原 ENEX 仍先用现有转换器转换。预览不写入记录，返回重复原因、每篇时间候选 key 和默认未选的 choices 模板。
+每个输入使用一个 `--files`，也可传入目录：递归读取 TXT/MD/MARKDOWN，跳过符号链接和其他类型，相对路径区分同名文件。支持单独的 JSONL、JSONL + manifest.json；不要混选文字文件和 JSONL。原 ENEX 仍先用现有转换器转换。预览不写入记录，返回逐文件 errors、重复原因、每篇时间候选 key 和默认未选的 choices 模板。部分文字文件失败时，有效文件仍可提交；整批失败则报错。计划只包含预览时的文件，之后新增文件需重新预览。
 
 编辑 UTF-8 的 choices 文件，将所需记录 `selected` 设为 `true`。`time.key` 可以使用该篇候选 key、`none`（未知）或 `manual`；`target` 可选 `dreamDate`、`recordedAt`、`both`。
 
@@ -82,7 +82,7 @@
 .\baku.cmd import commit --vault private/restored-vault --plan private/restore-plan.json --select-all --json
 ```
 
-导出返回 SHA-256、篇数及 revision；verify 检查结构和 ID 唯一性，返回当前校验值。需与导出校验值比较，单独 verify 不证明未被改变。恢复按 ID 追加，不清空原库。附件仅保留元数据，不包含二进制文件。输出计划、模板及备份均不覆盖已有文件。
+导出返回 SHA-256、篇数及 revision；verify 检查结构和 ID 唯一性，返回当前校验值。需与导出校验值比较，单独 verify 不证明未被改变。恢复按 ID 追加，不清空原库，保留回收站状态和内嵌原音；外部附件文件不随 JSONL 复制。输出计划、模板及备份均不覆盖已有文件。
 
 ## 存储和错误
 
