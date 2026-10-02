@@ -1,6 +1,44 @@
 import type { Dream } from './dreams';
 import type { ImportPreview } from './import';
-import { applyTimeChoice, emptyTimeChoice, type TimeChoice } from './importTime.ts';
+import { applyTimeChoice, emptyTimeChoice, parseImportTime, type TimeChoice } from './importTime.ts';
+
+export type NoteFields = Pick<Dream, 'title' | 'body' | 'dreamDate' | 'tags' | 'recordedAt'>;
+export function validateNoteFields(input: unknown): Partial<NoteFields> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Expected note fields object');
+  const value = input as Record<string, unknown>;
+  const allowed = ['title', 'body', 'dreamDate', 'tags', 'recordedAt'];
+  if (Object.keys(value).some(key => !allowed.includes(key))) throw new Error('Unknown or immutable note field');
+  const fields: Partial<NoteFields> = {};
+  for (const key of ['title', 'body', 'dreamDate'] as const) {
+    if (Object.hasOwn(value, key)) {
+      if (typeof value[key] !== 'string' || /[\u0000\uFFFD]/u.test(value[key])) throw new Error(`Invalid ${key}`);
+      fields[key] = value[key];
+    }
+  }
+  if (fields.dreamDate && (!/^\d{4}-\d{2}-\d{2}$/.test(fields.dreamDate) || parseImportTime(fields.dreamDate) !== fields.dreamDate)) throw new Error('dreamDate must be a valid YYYY-MM-DD or empty');
+  if (Object.hasOwn(value, 'tags')) {
+    if (!Array.isArray(value.tags) || !value.tags.every(tag => typeof tag === 'string' && tag.trim() && !/[\u0000\uFFFD]/u.test(tag))) throw new Error('Invalid tags');
+    fields.tags = [...value.tags] as string[];
+  }
+  if (Object.hasOwn(value, 'recordedAt')) {
+    if (value.recordedAt === null) fields.recordedAt = null;
+    else if (typeof value.recordedAt === 'string' && parseImportTime(value.recordedAt)) fields.recordedAt = parseImportTime(value.recordedAt);
+    else throw new Error('recordedAt must be an explicit time or null');
+  }
+  return fields;
+}
+export function createNote(fields: Partial<NoteFields>, id: string, now: string): Dream {
+  const note: Dream = { id, title: '', body: '', dreamDate: '', tags: [], source: 'new',
+    createdAt: now, updatedAt: now, recordedAt: now, ...fields };
+  if (!note.title.trim() && !note.body.trim()) throw new Error('A note needs a title or body');
+  return note;
+}
+export function updateNote(note: Dream, fields: Partial<NoteFields>, now: string): Dream {
+  if (!Object.keys(fields).length) throw new Error('Specify at least one editable field');
+  const next = { ...note, ...fields, updatedAt: now };
+  if (!next.title.trim() && !next.body.trim()) throw new Error('A note needs a title or body');
+  return next;
+}
 
 export const searchDreams = (dreams: Dream[], query: string): Dream[] => {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { parseImportFiles, buildImportCandidates, parseDreamArchive, serializeDreamArchive } from '../src/import.ts';
-import { prepareImport, searchDreams } from '../src/journal.ts';
+import { prepareImport, searchDreams, validateNoteFields, createNote, updateNote } from '../src/journal.ts';
 import { readVault, transact, VaultError } from './fileVault.mjs';
 
 const hash = text => createHash('sha256').update(text).digest('hex');
@@ -29,7 +29,7 @@ async function inputs(paths, guard) {
 }
 export async function executeOperation(command, flags, guard = async () => {}) {
   const requireFlag = name => flags[name] || fail('INVALID_ARGUMENT', `Missing --${name}`);
-  for (const name of ['file', 'plan', 'choices', 'output', 'choices-output']) {
+  for (const name of ['file', 'plan', 'choices', 'output', 'choices-output', 'input']) {
     if (flags[name]) await guard(flags[name]);
   }
   if (command === 'backup verify') {
@@ -42,6 +42,37 @@ export async function executeOperation(command, flags, guard = async () => {}) {
   await guard(vault);
   await guard(path.join(vault, 'vault.json'));
   const state = await readVault(vault);
+  if (['notes create', 'notes update'].includes(command)) {
+    const revisionInput = flags['expected-revision'];
+    const expected = typeof revisionInput === 'number' ? revisionInput :
+      typeof revisionInput === 'string' && /^\d+$/.test(revisionInput) ? Number(revisionInput) : NaN;
+    if (!Number.isSafeInteger(expected) || expected < 0) fail('INVALID_ARGUMENT', 'Pass --expected-revision from status');
+    const requestId = requireFlag('request-id');
+    if (typeof requestId !== 'string' || !/^[a-zA-Z0-9_-]{8,128}$/.test(requestId)) fail('INVALID_ARGUMENT', 'request-id must be 8-128 letters, digits, underscores or hyphens');
+    if (!!flags.input === (flags.inputValues !== undefined)) fail('INVALID_ARGUMENT', 'Pass exactly one input object or --input JSON file');
+    const raw = flags.inputValues !== undefined ? flags.inputValues : JSON.parse((await fs.readFile(flags.input, 'utf8')).replace(/^\uFEFF/, ''));
+    const fields = validateNoteFields(raw);
+    const id = command === 'notes update' ? requireFlag('id') : null;
+    const requestHash = hash(JSON.stringify({ command, id, expected, fields }));
+    const receiptKey = `note:${requestId}`;
+    return transact(vault, current => {
+      const receipt = current.receipts[receiptKey];
+      if (receipt) {
+        if (receipt.requestHash !== requestHash) fail('CONFLICT', 'Request ID was used with different arguments');
+        return { result: { ...receipt.result, replayed: true } };
+      }
+      if (current.revision !== expected) fail('CONFLICT', 'Vault changed; read the current note and revision again');
+      const now = new Date().toISOString();
+      const existing = id && current.dreams.find(d => d.id === id);
+      if (id && !existing) fail('NOT_FOUND', 'Record not found');
+      const record = existing ? updateNote(existing, fields, now) : createNote(fields, randomUUID(), now);
+      const dreams = existing ? current.dreams.map(d => d.id === id ? record : d) : [record, ...current.dreams];
+      const result = { operationId: randomUUID(), requestId, revision: current.revision + 1,
+        count: dreams.length, record, replayed: false };
+      return { result, next: { revision: result.revision, dreams,
+        receipts: { ...current.receipts, [receiptKey]: { requestHash, result } } } };
+    });
+  }
   if (command === 'status') return { vault, revision: state.revision, count: state.dreams.length, storage: 'file', cloud: false };
   if (command === 'notes get') {
     const record = state.dreams.find(d => d.id === requireFlag('id'));

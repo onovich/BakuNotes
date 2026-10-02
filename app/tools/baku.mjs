@@ -6,13 +6,14 @@ try { ({ values: flags, positionals } = parseArgs({ allowPositionals: true, opti
   vault: { type: 'string' }, json: { type: 'boolean' }, files: { type: 'string', multiple: true },
   output: { type: 'string' }, plan: { type: 'string' }, choices: { type: 'string' },
   'choices-output': { type: 'string' },
+  input: { type: 'string' }, 'expected-revision': { type: 'string' }, 'request-id': { type: 'string' },
   'select-all': { type: 'boolean' }, file: { type: 'string' }, id: { type: 'string' },
   query: { type: 'string' }, offset: { type: 'string' }, limit: { type: 'string' }, help: { type: 'boolean' },
 } })); } catch (error) {
   console.error(JSON.stringify({ ok: false, code: 'INVALID_ARGUMENT', message: error.message }));
   process.exit(2);
 }
-const help = `BakuNotes CLI (Node 24+)\nCommands: status, notes list/get, import preview/commit, backup export/verify\nUse --vault DIRECTORY. baku-web --vault DIRECTORY connects the web app to this library.\npreview: --files PATH (repeat) --output PLAN.json\ncommit: --plan PLAN.json --choices CHOICES.json OR --select-all (keeps times unknown)\nexport: --output BACKUP.jsonl; verify: --file BACKUP.jsonl\nlist: --query WORDS --offset 0 --limit 50; get: --id ID\nUse --json for machine-readable results. Existing output files are never overwritten.`;
+const help = `BakuNotes CLI (Node 24+)\nCommands: status, notes list/get/create/update, import preview/commit, backup export/verify\nUse --vault DIRECTORY. baku-web --vault DIRECTORY connects the web app to this library.\npreview: --files PATH (repeat) --output PLAN.json\ncommit: --plan PLAN.json --choices CHOICES.json OR --select-all (keeps times unknown)\nexport: --output BACKUP.jsonl; verify: --file BACKUP.jsonl\nlist: --query WORDS --offset 0 --limit 50; get: --id ID\ncreate/update: --input FIELDS.json --expected-revision N --request-id UNIQUE_ID; update also --id ID\nUse --json for machine-readable results. Existing output files are never overwritten.`;
 
 try {
   const result = flags.help || !positionals.length ? { help } : await executeOperation(positionals.join(' '), flags);

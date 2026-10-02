@@ -29,7 +29,7 @@ test('MCP protocol imports, retries, exports and restores with CLI-compatible st
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const first = await connect(root, path.join(root, 'vault'));
   t.after(() => first.close());
-  assert.equal((await first.listTools()).tools.length, 7);
+  assert.equal((await first.listTools()).tools.length, 9);
   assert.equal((await call(first, 'journal_status')).count, 0);
   const file = path.join(root, '虚构.txt'), plan = path.join(root, 'plan.json');
   await fs.writeFile(file, '2026年10月1日\n虚构梦见一盏灯');

@@ -1,6 +1,6 @@
 # BakuNotes CLI
 
-已实现：文件库的状态、分页检索、读取、导入预览/确认、备份导出/校验；[本地 MCP](MCP.md) 复用相同操作，[网页连接模式](WEB_VAULT.md)可读写同一库。尚未实现新建/更新命令。
+已实现：文件库的状态、分页检索、读取、新建/编辑、导入预览/确认、备份导出/校验；[本地 MCP](MCP.md) 复用相同操作，[网页连接模式](WEB_VAULT.md)可读写同一库。
 
 ## 启动
 
@@ -12,6 +12,29 @@
 ```
 
 `--vault` 明确指定文件库目录。不存在的库读取为零篇，首次提交时创建。普通网页的 AsyncStorage 与文件库独立；连接模式的网页与 CLI 指向同一目录，刷新网页可读取工具更新。库、计划、选择文件和备份含个人信息，应保存在 `private/` 等不公开目录。
+
+## 新建和编辑
+
+先读取 `status` 或 `notes get` 的 revision。将指定字段写入 UTF-8 JSON 文件，再提交；正文使用普通文本或基础 Markdown，不解析富文本。
+
+`private/new-note.json` 示例：
+
+```json
+{"title":"合成示例","body":"梦见一只纸船。","dreamDate":"2026-10-02","tags":["纸船"]}
+```
+
+```powershell
+.\baku.cmd notes create --vault private/my-vault --input private/new-note.json --expected-revision 0 --request-id create-note-001 --json
+.\baku.cmd notes update --vault private/my-vault --id "返回的记录ID" --input private/note-patch.json --expected-revision 1 --request-id update-note-001 --json
+```
+
+示例 revision 仅适用于空库第一次创建后，实际使用当前库返回的值。编辑文件仅写需要改变的字段，例如 `{"body":"修改后的正文"}`。省略字段保持原值；标题/正文不能同时为空白。只接受 title、body、dreamDate、tags 和 recordedAt；ID、创建时间、来源及附件不可通过该命令改写。每次成功写入更新系统 updatedAt。
+
+- dreamDate 使用有效 `YYYY-MM-DD`，空字符串代表未知；新建时省略则未知，不按创建时间猜测梦的日期。
+- 新记录的 createdAt/updatedAt 由系统生成，recordedAt 默认本次创建时间。可显式指定 recordedAt（支持现有中文/数字时间解析），null 表示未知；编辑时省略保持原值。
+- tags 为字符串数组，空数组清空标签。
+- `--expected-revision` 是整个库的版本号，其他记录被修改也会产生冲突。冲突后重新读取记录/版本并核对，再以新的 request-id 提交。
+- request-id 为 8～128 位字母、数字、下划线或连字符。为每次操作生成不同值；响应丢失时使用同一个 ID、同一输入和原 revision 重试，返回原结果且不重复写入。同 ID 不同参数会冲突。重试回执是当时结果，最新记录用 notes get 读取。
 
 ## 导入
 

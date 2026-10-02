@@ -1,6 +1,6 @@
 # CLI 与 MCP 设计提案
 
-状态：文件库 CLI 和本地 stdio MCP 的状态、检索/读取、导入预览/确认及备份导出/校验已实现，使用方式见 [CLI 文档](CLI.md) 和 [MCP 文档](MCP.md)。[网页同库连接](WEB_VAULT.md)已实现，新建/更新工具仍在设计阶段。目标是让用户、AI 和自动测试通过同一套操作管理 BakuNotes，不依赖桌面点击。
+状态：文件库 CLI 和本地 stdio MCP 的状态、检索/读取、新建/编辑、导入预览/确认及备份导出/校验已实现，使用方式见 [CLI 文档](CLI.md) 和 [MCP 文档](MCP.md)。[网页同库连接](WEB_VAULT.md)已实现。目标是让用户、AI 和自动测试通过同一套操作管理 BakuNotes，不依赖桌面点击。
 
 ## 架构
 
@@ -19,14 +19,14 @@ Journal 模块的 interface 统一记录校验、搜索、导入预览、时间�
 
 ## 首批操作
 
-以下为完整目标 interface；现有 CLI/MCP 支持的子集及准确启动方式见对应文档。新建/更新尚未实现。
+以下操作已实现；准确参数及启动方式见对应文档。
 
 | 用户 CLI | MCP tool | 用途 |
 | --- | --- | --- |
 | `baku status` | `journal_status` | 当前库、revision、篇数及持久化状态，不默认返回正文 |
 | `baku notes list --query ...` | `notes_list` | 分页搜索；返回 ID、标题、日期，按需包含摘要 |
 | `baku notes get --id ...` | `notes_get` | 读取指定记录及来源信息 |
-| `baku notes create` / `update` | `notes_create` / `notes_update` | 新建或修改；更新提交 expected revision，输入正文支持文件/stdin |
+| `baku notes create` / `update` | `notes_create` / `notes_update` | 新建或指定字段编辑；提交 expected revision 和 request ID，CLI 使用 JSON 输入文件，MCP 使用结构化参数 |
 | `baku import preview --files ...` | `import_preview` | 校验输入，返回记录、重复项、时间候选及稳定 plan ID，不写入 |
 | `baku import commit --plan ... --choices ...` | `import_commit` | 提交选择和字段目标；校验计划、源文件校验值及库 revision；缺失/歧义时间不替代 |
 | `baku backup export --output ...` | `backup_export` | 生成明确路径的 JSONL，返回篇数及 SHA-256 |
@@ -65,7 +65,7 @@ MCP 启动配置指定库路径和可读取/写入的目录。批量文件操作
 
 1. 提取可跨 Node/Expo 的 Journal 模块，保留现有 ID、存储键和 JSONL 兼容性；应用导入也调用相同 interface。
 2. 实现本地文件 adapter 和 CLI：status、list/get、import preview/commit、backup export/verify；用独立库完成真实磁盘往返测试。
-3. 接 stdio MCP，复用 CLI 所依赖的模块，并运行协议级测试；随后补 create/update。
+3. 接 stdio MCP，复用 CLI 所依赖的模块，并运行协议级测试；create/update 已补齐，共享 Journal 字段校验及版本/请求回执规则。
 4. 实现网页连接模式，再完成工具与打开网页同库的验收；云端/移动端操作随后扩展。
 
 第一阶段交付 CLI 可运行、持久化可验证；第二阶段交付 AI 可调用的 MCP。工具名称、选项、连接方式在实现后才写入 README 的可用功能列表。

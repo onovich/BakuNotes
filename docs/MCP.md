@@ -43,10 +43,23 @@
 | `journal_status` | 无 | 文件库位置、篇数、revision |
 | `notes_list` | 可选 query、offset、limit（1～500） | 分页 ID、标题和日期，不带正文 |
 | `notes_get` | id | 记录正文、时间及来源元数据 |
+| `notes_create` | expectedRevision、requestId；可选 title/body/dreamDate/tags/recordedAt | 新记录、系统时间、revision、重试标记 |
+| `notes_update` | id、expectedRevision、requestId、patch | 指定字段更新，保留来源、ID 与附件；返回新 revision |
 | `import_preview` | files 数组、output 计划路径 | 逐篇重复原因、时间候选 key、默认未选的 choicesTemplate |
 | `import_commit` | plan；choices 数组或 selectAll=true | 持久化操作 ID、revision、导入篇数、幂等重试标记 |
 | `backup_export` | output | 新建 JSONL 备份、篇数、SHA-256 |
 | `backup_verify` | file | JSONL 结构/ID 校验及当前 SHA-256 |
+
+共九个工具，只读模式仍提供四个。新建/编辑的时间和字段规则见 [CLI 约定](CLI.md#新建和编辑)。先调用状态或读取工具取得当前 revision，生成新的 requestId；相同请求重试返回原回执。编辑示例：
+
+```json
+{
+  "id": "读取返回的 ID",
+  "expectedRevision": 3,
+  "requestId": "edit-note-20261002-001",
+  "patch": { "body": "修改后的正文", "dreamDate": "2026-10-02" }
+}
+```
 
 `import_preview` 会写计划文件，虽然不导入笔记，也不属于只读工具。MCP commit 的 choices 是结构化数组，无需 AI 再写选择文件；与 CLI 的 choices 文件使用相同字段。
 
@@ -71,4 +84,4 @@
 
 在 `app/` 执行 `npm test`。MCP 测试通过官方 Client 实际启动服务器子进程，执行 initialize、tools/list 和 tools/call，验证导入、重试、搜索、导出校验、第二个库恢复、CLI 互读、只读工具集合、schema 校验、目录及符号链接越界，以及伪造计划不能读取范围外来源文件。所有公开样本均为虚构内容。
 
-[网页同库连接](WEB_VAULT.md)已实现。尚未实现新建/编辑工具及远程 MCP；当前也未自动把服务器安装到正在使用的 AI 客户端。
+[网页同库连接](WEB_VAULT.md)及新建/编辑工具已实现。远程 MCP 尚未实现；当前也未自动把服务器安装到正在使用的 AI 客户端。
